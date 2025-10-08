@@ -13,7 +13,7 @@ export const apiLogin =  (data: IUserLogin) => {
 }
 
 export const apiGetBanks =  () => {
-    return BaseService.get(`${servicePrefix}/banks`)
+    return BaseService.post(`${servicePrefix}/banks`)
 }
 
 export const apiVerifyBank =  (data: IVerifyBank) => {
