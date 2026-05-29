@@ -43,7 +43,7 @@ function SubmissionRow({
         : row.fields[0]?.value
             ? String(row.fields[0].value).slice(0, 30)
             : `Entry #${row.index}`
-
+//tested
     return (
         <div
             className="flex items-center gap-3 py-3 cursor-pointer hover:bg-[#f4f8f4] -mx-4 px-4 rounded-lg transition"
