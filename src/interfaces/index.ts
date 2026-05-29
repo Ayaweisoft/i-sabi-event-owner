@@ -451,3 +451,413 @@ export interface IAddBank {
 export interface IAddBankAction extends IReducerAction<"account_number" | "bank_code" | "bank_name" | "is_default" | "reset"> {
     payload: string | number | boolean
 }
+
+// ── Dashboard API types ────────────────────────────────────────────────────────
+
+export interface IAlert {
+    type: string
+    level: 'alert' | 'warning' | 'info' | 'success' | 'danger'
+    message: string
+    eventId?: string
+    eventName?: string
+}
+
+export interface IActivityItem {
+    type: 'ticket_sale' | 'check_in' | 'vote' | 'form_submission'
+    message: string
+    amount?: number
+    eventName: string
+    at: string
+}
+
+export interface IOwnerSummary {
+    owner: { name: string; username: string; balance: number }
+    stats: {
+        totalEvents: number
+        liveEvents: number
+        ticketsSold: number
+        checkedIn: number
+        totalVotes: number
+        formSubmissions: number
+        totalEarned: number
+    }
+    alerts: IAlert[]
+    recentActivity: IActivityItem[]
+    liveEvents: { _id: string; eventName: string; type: string; startDate: string }[]
+}
+
+export interface IContestantLeader {
+    _id: string
+    fullname: string
+    nickname: string
+    image_url: string
+    vote_count: number
+    pct: number
+}
+
+export interface ITicketPurchase {
+    _id: string
+    name: string
+    ticketType: string
+    amountPaid: number
+    numberOfTicket: number
+    date_purchased: string
+    status: string
+}
+
+export interface IEventSummary {
+    _id: string
+    eventName: string
+    type: 'TICKETING' | 'VOTING' | 'FORM-SALES'
+    status: string
+    venue: string
+    startDate: string
+    startTime: string
+    image_url: string
+    event_is_live: boolean
+    activePins: number
+    tickets?: {
+        sold: number
+        revenue: number
+        checkedIn: number
+        checkInRate: number
+        types: { ticketType: string; amount: number; purchased: number }[]
+        recent: ITicketPurchase[]
+    }
+    voting?: {
+        totalVotes: number
+        costPerVote: number
+        contestantCount: number
+        estimatedRevenue: number
+        leaderboard: IContestantLeader[]
+    }
+    forms?: {
+        title: string
+        price: number
+        active: boolean
+        submissions: number
+        revenue: number
+    }
+}
+
+export interface ISalesTrend {
+    period: string
+    data: { date: string; tickets: number; revenue: number; orders: number }[]
+}
+
+export interface ICheckinTrend {
+    period: string
+    data: { label: string; count: number }[]
+}
+
+export interface IAudienceInsights {
+    totalBuyers: number
+    totalSold: number
+    avgTicketsPerBuyer: number
+    repeatBuyerCount: number
+    repeatBuyerRate: number
+    earlyBuyers: number
+    urgencyBuyers: number
+    ticketTypePref: { type: string; count: number; pct: number }[]
+    timingHeatmap: number[][]
+    topBuyers: { name: string; email: string; tickets: number; spend: number }[]
+}
+
+export interface IHealthScore {
+    overall: number
+    grade: string
+    breakdown: {
+        salesVelocity: number
+        checkInRate: number
+        pinSafety: number
+        approvalStatus: number
+        profileComplete: number
+    }
+    recommendations: { level: string; msg: string }[]
+}
+
+export interface IVoteTrendDataset {
+    contestantId: string
+    fullname: string
+    nickname: string
+    image_url: string
+    data: number[]
+}
+
+export interface IVoteTrend {
+    period: string
+    labels: string[]
+    datasets: IVoteTrendDataset[]
+}
+
+export interface IEventOwnerTx {
+    _id: string
+    _eventOwnerID: string
+    amount: string
+    type: string
+    description: string
+    createdAt: string
+}
+
+export interface IPayout {
+    _id: string
+    amount: number
+    username: string
+    date: string
+}
+
+export interface IWalletSummary {
+    balance: number
+    totalEarned: number
+    totalWithdrawn: number
+    revenueBySource: { ticketing: number; voting: number; forms: number }
+    revenueByEvent: { eventId: string; eventName: string; revenue: number; sold: number }[]
+    monthlyChart: { label: string; amount: number; count: number }[]
+    recentTransactions: IEventOwnerTx[]
+    payoutHistory: IPayout[]
+}
+
+export interface INotification {
+    type: 'alert' | 'sale' | 'checkin' | 'vote' | 'milestone'
+    level: 'danger' | 'warning' | 'success' | 'info'
+    title: string
+    body: string
+    eventId?: string
+    eventName?: string
+    at: string
+}
+
+export interface INotificationsResponse {
+    total: number
+    page: number
+    limit: number
+    pages: number
+    notifications: INotification[]
+}
+
+export interface ICheckinEntry {
+    name: string
+    ticketType: string
+    numberOfTicket: number
+    numberOfTicketUsed: number
+    checkedInAt: string | null
+}
+
+export interface ICheckinStats {
+    eventName: string
+    totalSeats: number
+    checkedIn: number
+    remaining: number
+    percentFull: number
+    recentCheckIns: ICheckinEntry[]
+}
+
+export interface IAttendee {
+    ticketId: string
+    name: string
+    email: string
+    phone: string
+    ticketType: string
+    numberOfTicket: number
+    numberOfTicketUsed: number
+    status: string
+    checkedInAt: string | null
+    checkedInBy: string | null
+}
+
+export interface IAttendeesResponse {
+    total: number
+    tickets: IAttendee[]
+}
+
+export interface IPinsResponse {
+    eventId: string
+    pins: string[]
+    count: number
+}
+
+export interface IWhoVotedEntry {
+    _id: string
+    contestant_id: string
+    purchased_vote: number
+    total_amount: number
+    message?: string
+    date: string
+    contestant?: { fullname: string; nickname: string; image_url: string }
+}
+
+export interface IWhoVotedResponse {
+    votes?: IWhoVotedEntry[]
+    data?: IWhoVotedEntry[]
+}
+
+// ── Event management types ─────────────────────────────────────────────────────
+
+export interface ITicketType {
+    _id: string
+    ticketType: string
+    amount: string
+    purchased: number
+    eventId: string
+    imageUrl?: string
+}
+
+export interface ITicketTypesResponse {
+    tickets: ITicketType[]
+}
+
+export interface IFullPurchaseHistoryResponse {
+    tickets: ITicketPurchase[]
+}
+
+export interface IContestantFull {
+    _id: string
+    event_id: string
+    fullname: string
+    nickname: string
+    image_url: string
+    my_code: number
+    vote_count: number
+    date: string
+}
+
+export interface IContestantsResponse {
+    contestant: IContestantFull[]
+    cost_per_vote: number
+    eventData: Partial<IEvent>
+}
+
+export interface IFormField {
+    label: string
+    name: string
+    type: string
+    required: boolean
+    options?: string[]
+}
+
+export interface IForm {
+    _id: string
+    eventId: string
+    ownerId: string
+    title: string
+    description: string
+    price: number
+    colorTheme: string
+    fields: IFormField[]
+    active: boolean
+    createdAt: string
+}
+
+export interface IFormSubmission {
+    _id: string
+    formId: string
+    eventId: string
+    submittedBy?: string
+    data: Record<string, unknown>
+    createdAt: string
+}
+
+export interface IFormSubmissionsResponse {
+    count?: number
+    total?: number
+    submissions?: IFormSubmission[]
+}
+
+export interface IVoteRecord {
+    _id?: string
+    event_id: string
+    total_amount: number
+    contestant_id: string
+    purchased_vote: number
+    ref?: string
+    message?: string
+    date: string
+}
+
+export interface IVoteRecordsResponse {
+    transList: IVoteRecord[]
+    transanctionCount: number
+}
+
+export interface ISubmitTicketType {
+    eventId: string
+    ticketType: string
+    amount: string
+    imageUrl?: string
+}
+
+export interface ICreateContestant {
+    event_id: string
+    fullname: string
+    nickname: string
+    image_url: string
+}
+
+// ── Submissions ────────────────────────────────────────────────────────────────
+
+export interface ISubmissionField {
+    label: string
+    name: string
+    type: string
+    value: string | number | boolean | null
+}
+
+export interface ISubmissionRow {
+    index: number
+    _id: string
+    submittedAt: string
+    submittedBy: string | null
+    fields: ISubmissionField[]
+    raw: Record<string, unknown>
+    // global view extras
+    eventId?: string
+    eventName?: string
+    formId?: string
+    formTitle?: string
+    pricePerEntry?: number
+}
+
+export interface ISubmissionMeta {
+    page: number
+    limit: number
+    total: number
+    pages: number
+}
+
+export interface IEventSubmissionsResponse {
+    form: {
+        _id: string
+        title: string
+        price: number
+        active: boolean
+        fieldCount: number
+    } | null
+    meta: ISubmissionMeta
+    summary: {
+        totalSubmissions: number
+        revenue: number
+        pricePerEntry: number
+    }
+    data: ISubmissionRow[]
+}
+
+export interface ISubmissionDetail {
+    _id: string
+    submittedAt: string
+    submittedBy: string | null
+    form: { _id: string; title: string; price: number } | null
+    event: { _id: string; eventName: string }
+    fields: ISubmissionField[]
+    raw: Record<string, unknown>
+}
+
+export interface IAllSubmissionsResponse {
+    meta: ISubmissionMeta
+    summary: {
+        totalSubmissions: number
+        totalRevenue: number
+        eventsWithForms: number
+    }
+    events: { _id: string; eventName: string; count: number }[]
+    data: ISubmissionRow[]
+}

@@ -45,37 +45,51 @@
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.56 0.1372 146.01);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /* i-sabi brand palette */
+  --isabi-green:      #2d8c3e;
+  --isabi-green-deep: #07360E;
+  --isabi-green-dark: #1a3620;
+  --isabi-green-bg:   #2d6b36;
+  --isabi-gold:       #F5C518;
+  --isabi-gold-dim:   #c49d10;
+  --isabi-surface:    #f4f8f4;
+  --isabi-border:     #d4e8d6;
+  --isabi-text:       #0f2312;
+  --isabi-text-mid:   #3d5c42;
+  --isabi-text-light: #6b8f70;
+  --isabi-error:      #e74c3c;
+
+  --background: #f4f8f4;
+  --foreground: #0f2312;
+  --card: #ffffff;
+  --card-foreground: #0f2312;
+  --popover: #ffffff;
+  --popover-foreground: #0f2312;
+  --primary: #2d8c3e;
+  --primary-foreground: #ffffff;
+  --secondary: #f4f8f4;
+  --secondary-foreground: #0f2312;
+  --muted: #e8f2e9;
+  --muted-foreground: #6b8f70;
+  --accent: #F5C518;
+  --accent-foreground: #07360E;
+  --destructive: #e74c3c;
+  --border: #d4e8d6;
+  --input: #d4e8d6;
+  --ring: #2d8c3e;
+  --chart-1: #2d8c3e;
+  --chart-2: #F5C518;
+  --chart-3: #1a3620;
+  --chart-4: #c49d10;
+  --chart-5: #3d5c42;
+  --sidebar: #07360E;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #F5C518;
+  --sidebar-primary-foreground: #07360E;
+  --sidebar-accent: #1a3620;
+  --sidebar-accent-foreground: #f4f8f4;
+  --sidebar-border: #1a3620;
+  --sidebar-ring: #2d8c3e;
 }
 
 .dark {
@@ -122,4 +136,12 @@
   body {
     @apply bg-background text-foreground w-full;
   }
+}
+
+/* Spinner utility used in login button */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.animate-spin {
+  animation: spin 0.7s linear infinite;
 }
