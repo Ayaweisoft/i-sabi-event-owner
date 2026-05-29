@@ -29,7 +29,7 @@ BaseService.interceptors.response.use(
         if (error.response?.status === 401 && typeof window !== 'undefined') {
             try {
                 localStorage.removeItem('auth')
-            } catch (_) { /* noop */ }
+            } catch { /* noop */ }
             window.location.replace('/')
         }
         return Promise.reject(error)

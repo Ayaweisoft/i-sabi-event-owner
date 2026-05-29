@@ -16,7 +16,6 @@ import { FieldValue } from '@/components/ImagePreview'
 
 const GREEN      = '#2d8c3e'
 const GREEN_DEEP = '#07360E'
-const GOLD       = '#F5C518'
 const SURFACE    = '#f4f8f4'
 const BORDER     = '#d4e8d6'
 const TEXT_LIGHT = '#6b8f70'

@@ -31,9 +31,9 @@ const SectionHeader = ({ title, action }: { title: string; action?: React.ReactN
     </div>
 )
 
-interface Props { eventId: string; costPerVote?: number }
+interface Props { eventId: string }
 
-export default function VotesTab({ eventId, costPerVote = 0 }: Props) {
+export default function VotesTab({ eventId }: Props) {
     const { data: trend, isLoading: trendLoading } = useFetch<IVoteTrend>({
         api: apiGetVoteTrend,
         key: ['VOTE_TREND', eventId],
