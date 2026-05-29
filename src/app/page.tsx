@@ -13,7 +13,6 @@ import { apiLogin } from '@/services/AuthService'
 
 const GREEN      = '#2d8c3e'
 const GREEN_DEEP = '#07360E'
-const GREEN_DARK = '#1a3620'
 const GOLD       = '#F5C518'
 const SURFACE    = '#f4f8f4'
 const BORDER     = '#d4e8d6'

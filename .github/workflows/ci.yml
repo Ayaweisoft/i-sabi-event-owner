@@ -31,6 +31,7 @@ jobs:
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/i-sabi:event-owner
           build-args: |
             NEXT_PUBLIC_API_ENDPOINT=${{ secrets.NEXT_PUBLIC_API_ENDPOINT }}
+            NEXT_PUBLIC_SITE_URL=${{ secrets.NEXT_PUBLIC_SITE_URL }}
 
   deploy:
     runs-on: ubuntu-latest

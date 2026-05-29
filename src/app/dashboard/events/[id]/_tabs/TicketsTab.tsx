@@ -102,8 +102,6 @@ export default function TicketsTab({ eventId }: Props) {
 
     const totalRevenue  = tickets.reduce((s, t) => s + (Number(t.amountPaid) || 0), 0)
     const totalSold     = tickets.reduce((s, t) => s + (t.numberOfTicket || 0), 0)
-    const totalCheckedIn = tickets.reduce((s, t) => s + (0), 0) // not available on this endpoint
-
     // Revenue by ticket type
     const revenueByType: Record<string, number> = {}
     const soldByType:    Record<string, number> = {}

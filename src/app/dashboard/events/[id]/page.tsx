@@ -234,7 +234,6 @@ const TicketsTab = ({ event, id }: { event: IEventSummary; id: string }) => {
     if (!event.tickets) return <p className="text-sm" style={{ color: TEXT_LIGHT }}>No ticket data available.</p>
 
     const { types, sold, revenue, checkedIn, recent } = event.tickets
-    const totalCapacity = types.reduce((s, t) => s + (t.purchased || 0), 0) + sold
 
     return (
         <div className="flex flex-col gap-4">
