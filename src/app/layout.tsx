@@ -11,7 +11,7 @@ const geistSans = Geist({
     preload: true,
 });
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://owner.i-sabi.com.ng";
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://owner.i-sabi.com.ng";
 
 export const viewport: Viewport = {
     themeColor: "#2d8c3e",

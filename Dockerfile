@@ -18,12 +18,16 @@ COPY . .
 # Disable Next.js telemetry
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Pass build-time environment variable
+# Pass build-time environment variables
 ARG NEXT_PUBLIC_API_ENDPOINT
 ENV NEXT_PUBLIC_API_ENDPOINT=$NEXT_PUBLIC_API_ENDPOINT
 
-# Build Next.js app with env var
-RUN NEXT_PUBLIC_API_ENDPOINT=$NEXT_PUBLIC_API_ENDPOINT npm run build
+# Default keeps the build passing even when the secret isn't wired up
+ARG NEXT_PUBLIC_SITE_URL=https://owner.i-sabi.com.ng
+ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
+
+# Build Next.js app
+RUN npm run build
 
 # Production stage
 FROM node:22-alpine AS runner
