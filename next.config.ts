@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
     output: "standalone",
+    outputFileTracingRoot: process.cwd(),
     reactStrictMode: true,
     compress: true,           // gzip/brotli all responses
     poweredByHeader: false,   // remove X-Powered-By header
