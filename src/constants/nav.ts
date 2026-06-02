@@ -1,8 +1,8 @@
-'use client'
 import { INav } from '@/interfaces';
+import { ROUTES } from './routes';
 import { BiSolidCollection } from 'react-icons/bi';
 import { TbTransactionEuro } from 'react-icons/tb';
-import { MdDashboard, MdEvent, MdNotifications, MdAccountBalanceWallet, MdArticle } from 'react-icons/md';
+import { MdDashboard, MdEvent, MdNotifications, MdAccountBalanceWallet, MdArticle, MdCampaign } from 'react-icons/md';
 
 const dashboardNavs: INav[] = [
     {
@@ -12,44 +12,50 @@ const dashboardNavs: INav[] = [
             {
                 id: 1,
                 title: "Overview",
-                link: "/dashboard",
+                link: ROUTES.OWNER.INDEX,
                 Icon: MdDashboard,
                 root: true,
             },
             {
                 id: 2,
                 title: "Events",
-                link: "/dashboard/events",
+                link: ROUTES.OWNER.EVENTS,
                 Icon: MdEvent,
             },
             {
                 id: 3,
-                title: "Wallet",
-                link: "/dashboard/wallet",
-                Icon: MdAccountBalanceWallet,
+                title: "Adz",
+                link: ROUTES.OWNER.ADZ.INDEX,
+                Icon: MdCampaign,
             },
             {
                 id: 4,
-                title: "Submissions",
-                link: "/dashboard/submissions",
-                Icon: MdArticle,
+                title: "Wallet",
+                link: ROUTES.OWNER.WALLET,
+                Icon: MdAccountBalanceWallet,
             },
             {
                 id: 5,
-                title: "Notifications",
-                link: "/dashboard/notifications",
-                Icon: MdNotifications,
+                title: "Submissions",
+                link: ROUTES.OWNER.SUBMISSIONS,
+                Icon: MdArticle,
             },
             {
                 id: 6,
-                title: "Transactions",
-                link: "/dashboard/transactions",
-                Icon: TbTransactionEuro,
+                title: "Notifications",
+                link: ROUTES.OWNER.NOTIFICATIONS,
+                Icon: MdNotifications,
             },
             {
                 id: 7,
+                title: "Transactions",
+                link: ROUTES.OWNER.TRANSACTIONS,
+                Icon: TbTransactionEuro,
+            },
+            {
+                id: 8,
                 title: "Withdraw",
-                link: "/dashboard/withdraw",
+                link: ROUTES.OWNER.WITHDRAW.INDEX,
                 Icon: BiSolidCollection,
             },
         ],

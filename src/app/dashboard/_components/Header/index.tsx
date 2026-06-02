@@ -1,17 +1,19 @@
 'use client'
 import React, { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { BiMenu } from 'react-icons/bi'
 import { MdOutlineClose, MdNotifications } from 'react-icons/md'
 import { TbLogout2 } from 'react-icons/tb'
 import Link from 'next/link'
-import { INav } from '@/interfaces'
 import Links from './Links'
 import useAuthStore from '@/hooks/useAuth'
 import { usePathname, useRouter } from 'next/navigation'
 import { ROUTES } from '@/constants/routes'
+import { clearPersistedQueryCache } from '@/providers/QueryProvider'
 
 const PAGE_TITLES: Record<string, string> = {
     '/dashboard':               'Overview',
+    '/dashboard/adz':           'Adz Campaigns',
     '/dashboard/events':        'My Events',
     '/dashboard/wallet':        'Wallet',
     '/dashboard/submissions':   'Submissions',
@@ -20,11 +22,12 @@ const PAGE_TITLES: Record<string, string> = {
     '/dashboard/withdraw':      'Withdraw',
 }
 
-const DashboardHeader = ({ nav }: { nav: INav[] }) => {
+const DashboardHeader = () => {
     const [isOpen, setIsOpen] = useState(false)
     const [showLogout, setShowLogout] = useState(false)
     const pathname  = usePathname()
     const router    = useRouter()
+    const queryClient = useQueryClient()
     const { doc, reset } = useAuthStore()
 
     const pageTitle = Object.entries(PAGE_TITLES).find(([key]) =>
@@ -34,6 +37,8 @@ const DashboardHeader = ({ nav }: { nav: INav[] }) => {
     const initials = (doc?.username || 'EO').slice(0, 2).toUpperCase()
 
     const handleLogout = () => {
+        queryClient.clear()
+        clearPersistedQueryCache()
         reset()
         router.replace('/')
     }
@@ -119,7 +124,7 @@ const DashboardHeader = ({ nav }: { nav: INav[] }) => {
             </div>
 
             {/* Mobile nav */}
-            <Links setIsOpen={setIsOpen} isOpen={isOpen} nav={nav} />
+            <Links setIsOpen={setIsOpen} isOpen={isOpen} />
         </div>
     )
 }

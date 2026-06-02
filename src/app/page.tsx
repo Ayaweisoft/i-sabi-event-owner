@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'react-toastify'
 import { MdVisibility, MdVisibilityOff, MdCheckCircle } from 'react-icons/md'
 import { BiSolidBolt } from 'react-icons/bi'
+import { MdCampaign } from 'react-icons/md'
 import Logo from '@/assets/logo.png'
 import useMutate from '@/hooks/useMutate'
 import useAuthStore from '@/hooks/useAuth'
@@ -22,6 +23,7 @@ const TEXT_LIGHT = '#6b8f70'
 const FEATURES = [
     'Real-time ticket sales & check-in tracking',
     'Live vote leaderboards & revenue',
+    'Adz campaign builder, review & performance tracking',
     'Wallet with instant withdrawal',
     'Smart health scores & audience insights',
     'Hourly check-in heatmaps & trend charts',
@@ -160,8 +162,24 @@ const LoginPage = () => {
                         </div>
                         <h2 className="text-3xl font-black" style={{ color: GREEN_DEEP }}>Welcome back</h2>
                         <p className="text-sm mt-1" style={{ color: TEXT_LIGHT }}>
-                            Sign in to manage your events and track revenue
+                            Sign in to manage your events, Adz campaigns, and revenue
                         </p>
+                    </div>
+
+                    <div
+                        className="mb-5 flex items-center gap-3 rounded-2xl border bg-white px-4 py-3 shadow-sm"
+                        style={{ borderColor: BORDER }}
+                    >
+                        <div
+                            className="flex h-10 w-10 items-center justify-center rounded-2xl"
+                            style={{ backgroundColor: '#eef7ec', color: GREEN }}
+                        >
+                            <MdCampaign className="text-xl" />
+                        </div>
+                        <div>
+                            <p className="text-sm font-semibold" style={{ color: GREEN_DEEP }}>Adz is now part of the owner portal</p>
+                            <p className="text-xs" style={{ color: TEXT_LIGHT }}>Create campaigns, submit for review, and track delivery inside the dashboard.</p>
+                        </div>
                     </div>
 
                     {/* Form card */}

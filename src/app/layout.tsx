@@ -27,11 +27,11 @@ export const metadata: Metadata = {
         template: "%s | i-sabi Event Owner",
     },
     description:
-        "Manage your i-sabi events in real time. Track ticket sales, check-ins, votes, form submissions, and revenue — all in one dashboard.",
+        "Manage your i-sabi events and Adz campaigns in real time. Track ticket sales, check-ins, votes, form submissions, campaign performance, and revenue — all in one dashboard.",
     keywords: [
         "i-sabi", "event management", "ticket sales", "event owner dashboard",
         "nigeria events", "event revenue", "check-in management", "voting contest",
-        "form submissions", "event analytics",
+        "form submissions", "event analytics", "adz campaigns", "event advertising",
     ],
     authors: [{ name: "i-sabi", url: "https://i-sabi.com.ng" }],
     creator: "i-sabi",
@@ -46,7 +46,7 @@ export const metadata: Metadata = {
         siteName: "i-sabi Event Owner Dashboard",
         title: "i-sabi Event Owner Dashboard",
         description:
-            "Track ticket sales, check-ins, votes, and revenue for all your events — live, in one place.",
+            "Track ticket sales, check-ins, votes, Adz campaign performance, and revenue for all your events — live, in one place.",
         images: [
             {
                 url: "/og-image.png",
@@ -62,7 +62,7 @@ export const metadata: Metadata = {
         card: "summary_large_image",
         title: "i-sabi Event Owner Dashboard",
         description:
-            "Manage your events, track ticket sales, check-ins, votes, and revenue in real time.",
+            "Manage your events and Adz campaigns, track ticket sales, check-ins, votes, and revenue in real time.",
         images: ["/og-image.png"],
         creator: "@isabimobile",
         site: "@isabimobile",
@@ -129,7 +129,7 @@ function JsonLd() {
                 operatingSystem: "Web",
                 url: BASE_URL,
                 description:
-                    "Manage ticket sales, check-ins, voting contests, form submissions, and revenue for events on the i-sabi platform.",
+                    "Manage ticket sales, check-ins, voting contests, form submissions, Adz campaigns, and revenue for events on the i-sabi platform.",
                 offers: {
                     "@type": "Offer",
                     price: "0",

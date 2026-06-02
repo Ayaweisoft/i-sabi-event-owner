@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { dashboardNavs } from "@/constants/nav";
 import AuthGuard from "./_components/AuthGuard";
 import SideNav from "./_components/SideNav";
 import Header from "./_components/Header";
@@ -17,9 +16,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <AuthGuard>
             <Suspense fallback={<InlineLoader />}>
                 <div className="flex w-full h-screen overflow-hidden" style={{ backgroundColor: "#f4f8f4" }}>
-                    <SideNav nav={dashboardNavs} />
+                    <SideNav />
                     <div className="relative flex-1 overflow-y-auto">
-                        <Header nav={dashboardNavs} />
+                        <Header />
                         <div className="px-4 pt-4 md:px-8 md:py-6">
                             {children}
                         </div>
