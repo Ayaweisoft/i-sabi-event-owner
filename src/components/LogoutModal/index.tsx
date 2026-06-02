@@ -1,10 +1,12 @@
 "use client"
 import React from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import ErrorImg from "@/assets/logo.png"
 import Image from 'next/image'
 import { Button } from '../ui/button'
 import { useRouter } from 'next/navigation'
 import useAuthStore from '@/hooks/useAuth'
+import { clearPersistedQueryCache } from '@/providers/QueryProvider'
 
 interface IProps {
     setIsOpen: React.Dispatch<React.SetStateAction<boolean>>
@@ -17,8 +19,11 @@ const LogoutModal = ({ isOpen, setIsOpen, logout }: IProps) => {
 
     const context = useAuthStore()
     const router = useRouter()
+    const queryClient = useQueryClient()
 
     const logOutHandler = () => {
+        queryClient.clear()
+        clearPersistedQueryCache()
         context.reset()
         logout?.()
         setIsOpen(false)

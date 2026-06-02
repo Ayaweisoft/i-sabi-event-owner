@@ -10,7 +10,7 @@ import { formatNaira, timeAgo } from '@/lib/utils'
 import { ROUTES } from '@/constants/routes'
 import {
     MdEvent, MdConfirmationNumber, MdHowToVote,
-    MdArticle, MdAccountBalanceWallet, MdCheckCircle,
+    MdArticle, MdAccountBalanceWallet, MdCheckCircle, MdCampaign,
 } from 'react-icons/md'
 import { BiSolidBell } from 'react-icons/bi'
 
@@ -109,6 +109,27 @@ const Overview = () => {
                     icon={<MdAccountBalanceWallet className="text-xl" />}
                     className="col-span-2 lg:col-span-1"
                 />
+            </div>
+
+            <div className="grid gap-3 lg:grid-cols-3">
+                <Link
+                    href={ROUTES.OWNER.ADZ.INDEX}
+                    className="rounded-2xl border border-[#d4e8d6] bg-white p-5 transition hover:border-primary hover:shadow-sm"
+                >
+                    <div className="flex items-start justify-between gap-3">
+                        <div>
+                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Adz</p>
+                            <h2 className="mt-2 text-lg font-bold">Campaigns</h2>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                                Build drafts, submit campaigns for review, and monitor performance.
+                            </p>
+                        </div>
+                        <div className="rounded-2xl bg-[#eef7ec] p-3 text-primary">
+                            <MdCampaign className="text-2xl" />
+                        </div>
+                    </div>
+                    <p className="mt-4 text-sm font-semibold text-primary">Open Adz →</p>
+                </Link>
             </div>
 
             {/* Live events */}

@@ -12,6 +12,12 @@ export const ROUTES = {
         INDEX: "/dashboard",
         EVENTS: "/dashboard/events",
         EVENT: (id: string) => `/dashboard/events/${id}`,
+        ADZ: {
+            INDEX: "/dashboard/adz",
+            CREATE: "/dashboard/adz/new",
+            DETAIL: (id: string) => `/dashboard/adz/${id}`,
+            EDIT: (id: string) => `/dashboard/adz/${id}/edit`,
+        },
         WALLET: "/dashboard/wallet",
         NOTIFICATIONS: "/dashboard/notifications",
         TRANSACTIONS: "/dashboard/transactions",
