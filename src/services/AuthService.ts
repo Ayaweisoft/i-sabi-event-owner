@@ -68,6 +68,12 @@ export const apiGetVoteTrend = (token: string, { id, period }: { id: string; per
         params: { period: period || 'daily' },
     })
 
+/** PATCH /v2/event-owner/event/:id/vote-goal — set or remove the vote target */
+export const apiSetVoteGoal = (
+    token: string,
+    { id, goal }: { id: string; goal: number },
+) => BaseService.patch(`v2/event-owner/event/${id}/vote-goal`, { goal }, Auth(token))
+
 // ── Check-in management endpoints ─────────────────────────────────────────────
 
 export const apiGetCheckinStats = (token: string, { id }: { id: string }) =>

@@ -169,9 +169,28 @@ export default function VotesTab({ eventId }: Props) {
                             <div key={i} className="flex items-center justify-between py-2.5">
                                 <div>
                                     <p className="text-sm font-semibold">{r.purchased_vote} votes</p>
-                                    <p className="text-xs" style={{ color: TEXT_LIGHT }}>
-                                        {r.ref ? `Ref: ${r.ref.slice(0, 12)}…` : ''}
-                                    </p>
+                                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                                        {r.ref && (
+                                            <span className="text-xs" style={{ color: TEXT_LIGHT }}>
+                                                Ref: {r.ref.slice(0, 12)}…
+                                            </span>
+                                        )}
+                                        {r.channel && (
+                                            <span className="text-xs px-1.5 py-0.5 rounded-full font-medium"
+                                                  style={{
+                                                      background: r.channel === 'app' ? '#e8f5ea' : r.channel === 'share' ? '#fef3c7' : '#f0f6ff',
+                                                      color:      r.channel === 'app' ? '#1a5c28' : r.channel === 'share' ? '#92400e' : '#1e40af',
+                                                  }}>
+                                                {r.channel}
+                                            </span>
+                                        )}
+                                        {r.packageId && (
+                                            <span className="text-xs px-1.5 py-0.5 rounded-full font-medium"
+                                                  style={{ background: 'rgba(201,168,76,.1)', color: '#a8893a' }}>
+                                                pkg
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
                                 <div className="text-right">
                                     <p className="text-sm font-bold" style={{ color: GREEN }}>

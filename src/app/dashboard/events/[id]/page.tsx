@@ -107,8 +107,10 @@ const OverviewTab = ({ event, id }: { event: IEventSummary; id: string }) => {
     return (
         <div className="flex flex-col gap-4">
             {/* Event banner */}
-            <div className="relative h-44 rounded-2xl overflow-hidden">
-                <Image src={event.image_url} fill alt={event.eventName} className="object-cover" />
+            <div className="relative h-44 rounded-2xl overflow-hidden bg-muted">
+                {event.image_url && (
+                    <Image src={event.image_url} fill alt={event.eventName} className="object-cover" />
+                )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
                 <div className="absolute bottom-3 left-4 right-4 text-white">
                     <div className="flex items-center gap-2 mb-1">
@@ -614,7 +616,7 @@ const VotesTab = ({ event, id }: { event: IEventSummary; id: string }) => {
         return point
     })
 
-    const voteLog = whoVoted?.votes || whoVoted?.data || []
+    const voteLog = whoVoted?.voters || whoVoted?.votes || whoVoted?.data || []
 
     return (
         <div className="flex flex-col gap-4">
@@ -671,20 +673,27 @@ const VotesTab = ({ event, id }: { event: IEventSummary; id: string }) => {
                         }
                     />
                     <div className="flex flex-col divide-y" style={{ borderColor: BORDER }}>
-                        {voteLog.slice(0, 20).map((v, i) => (
-                            <div key={i} className="flex items-center justify-between py-2.5">
-                                <div>
-                                    <p className="text-sm font-semibold">
-                                        {v.contestant?.fullname || 'Contestant'} · {v.purchased_vote} vote{v.purchased_vote !== 1 ? 's' : ''}
-                                    </p>
-                                    {v.message && <p className="text-xs italic" style={{ color: TEXT_LIGHT }}>&ldquo;{v.message}&rdquo;</p>}
+                        {voteLog.slice(0, 20).map((v, i) => {
+                            const voterName  = v.fullname || v.contestant?.fullname || 'Voter'
+                            const voteCount  = v.votes ?? v.purchased_vote ?? 0
+                            const amount     = v.total_amount
+                            return (
+                                <div key={i} className="flex items-center justify-between py-2.5">
+                                    <div>
+                                        <p className="text-sm font-semibold">
+                                            {voterName} · {voteCount} vote{voteCount !== 1 ? 's' : ''}
+                                        </p>
+                                        {v.message && <p className="text-xs italic" style={{ color: TEXT_LIGHT }}>&ldquo;{v.message}&rdquo;</p>}
+                                    </div>
+                                    <div className="text-right">
+                                        {amount != null && (
+                                            <p className="text-sm font-bold" style={{ color: GREEN }}>+{formatNaira(amount)}</p>
+                                        )}
+                                        <p className="text-xs" style={{ color: TEXT_LIGHT }}>{timeAgo(v.date)}</p>
+                                    </div>
                                 </div>
-                                <div className="text-right">
-                                    <p className="text-sm font-bold" style={{ color: GREEN }}>+{formatNaira(v.total_amount)}</p>
-                                    <p className="text-xs" style={{ color: TEXT_LIGHT }}>{timeAgo(v.date)}</p>
-                                </div>
-                            </div>
-                        ))}
+                            )
+                        })}
                     </div>
                 </Card>
             )}

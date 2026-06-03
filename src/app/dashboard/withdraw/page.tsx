@@ -113,7 +113,7 @@ const Withdraw = () => {
                         <option value="">Select Bank</option>
                         {
                             banks?.banks?.details?.message?.map((bank) => (
-                                <option key={bank.bankCode} value={bank.bankCode}>{bank.bankName}</option>
+                                <option key={`${bank.bankCode}_${bank.bankName}`} value={bank.bankCode}>{bank.bankName}</option>
                             ))
                         }
                     </select>

@@ -322,6 +322,323 @@ Soft-delete — sets `active: false`. Historical `soldSlots` data is preserved f
 
 ---
 
+### 8. List Contestants
+
+```
+GET /get-contestant/:eventId
+```
+
+**Auth:** ✅ Event owner  
+**Use case:** Fetch all contestants for a voting event (dashboard view, edit contestants, build leaderboard UI).
+
+**Response**
+
+```json
+{
+  "contestant": [
+    {
+      "_id": "...",
+      "event_id": "...",
+      "fullname": "Ada Okonkwo",
+      "nickname": "Ada",
+      "image_url": "https://...",
+      "my_code": 7,
+      "vote_count": 4820,
+      "date": "2025-10-01T00:00:00.000Z"
+    }
+  ],
+  "cost_per_vote": 50,
+  "eventData": {
+    "_id": "...",
+    "eventName": "Campus Queen 2025",
+    "status": "APPROVED"
+  }
+}
+```
+
+---
+
+### 9. Add Contestant
+
+```
+POST /create-contestant
+```
+
+**Auth:** ✅ Event owner  
+**Use case:** Register a new contestant under a voting event.
+
+**Request body**
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `event_id` | String | ✅ | The voting event's `_id` |
+| `fullname` | String | ✅ | Contestant's full name |
+| `nickname` | String | ✅ | Short display name shown on voting page |
+| `image_url` | String | ✅ | Hosted photo URL |
+
+**Response**
+
+```json
+{
+  "message": "Contestant created.",
+  "contestant": {
+    "_id": "...",
+    "event_id": "...",
+    "fullname": "Ada Okonkwo",
+    "nickname": "Ada",
+    "image_url": "https://...",
+    "my_code": 7,
+    "vote_count": 0,
+    "date": "2025-10-01T00:00:00.000Z"
+  }
+}
+```
+
+---
+
+### 10. Remove Contestant
+
+```
+DELETE /delete-contestant/:id
+```
+
+**Auth:** ✅ Event owner  
+**Use case:** Remove a contestant from the event. `:id` is the contestant's `_id`.
+
+Soft-delete — contestant is deactivated and hidden from the public voting page. Historical vote data is preserved.
+
+**Response**
+
+```json
+{ "message": "Contestant deleted." }
+```
+
+---
+
+### 11. Update Contestant
+
+```
+PUT /update-contestant/:id
+```
+
+**Auth:** ✅ Event owner  
+**Use case:** Edit a contestant's display name, nickname, or photo. `:id` is the contestant's `_id`.
+
+**Request body** — send only the fields to change:
+
+| Field | Type |
+| ------- | ------ |
+| `fullname` | String |
+| `nickname` | String |
+| `image_url` | String |
+
+**Response**
+
+```json
+{
+  "message": "Contestant updated.",
+  "contestant": {
+    "_id": "...",
+    "event_id": "...",
+    "fullname": "Ada Okonkwo",
+    "nickname": "Ada Q",
+    "image_url": "https://...",
+    "my_code": 7,
+    "vote_count": 4820
+  }
+}
+```
+
+---
+
+### 12. Vote Transaction Records
+
+```
+GET /get-event-records/:eventId
+```
+
+**Auth:** ✅ Event owner  
+**Use case:** Full list of individual vote purchases for an event. Use for revenue reporting and audit.
+
+**Response**
+
+```json
+{
+  "transList": [
+    {
+      "_id": "...",
+      "event_id": "...",
+      "contestant_id": "...",
+      "total_amount": 450,
+      "purchased_vote": 10,
+      "ref": "vote_1717600000_a1b2c3d4",
+      "message": "Go Ada!",
+      "date": "2025-11-05T14:22:00.000Z"
+    }
+  ],
+  "transanctionCount": 142
+}
+```
+
+---
+
+### 12. Vote Trend Analytics
+
+```
+GET /v2/event-owner/event/:eventId/vote-trend?period=<period>
+```
+
+**Auth:** ✅ Event owner  
+**Use case:** Time-series chart data showing votes received per contestant over time. Powers the analytics dashboard.
+
+**Query params**
+
+| Param    | Values                         | Default |
+|----------|--------------------------------|---------|
+| `period` | `daily` / `weekly` / `monthly` | `daily` |
+
+**Response**
+
+```json
+{
+  "period": "daily",
+  "labels": ["Nov 1", "Nov 2", "Nov 3"],
+  "datasets": [
+    {
+      "contestantId": "...",
+      "fullname": "Ada Okonkwo",
+      "nickname": "Ada",
+      "image_url": "https://...",
+      "data": [120, 340, 210]
+    },
+    {
+      "contestantId": "...",
+      "fullname": "Chioma Eze",
+      "nickname": "Chi",
+      "image_url": "https://...",
+      "data": [95, 180, 400]
+    }
+  ]
+}
+```
+
+> `labels` and each `data` array are always the same length. Index positions correspond.
+
+---
+
+### 13. Voting Event Summary
+
+```
+GET /v2/event-owner/event/:eventId/summary
+```
+
+**Auth:** ✅ Event owner  
+**Use case:** Single-call snapshot of a voting event's key metrics — total votes, revenue, leaderboard, and live status. Powers the event detail dashboard header.
+
+**Response** (voting event)
+
+```json
+{
+  "_id": "...",
+  "eventName": "Campus Queen 2025",
+  "type": "VOTING",
+  "status": "APPROVED",
+  "venue": "UniLag Auditorium",
+  "startDate": "2025-11-01T00:00:00.000Z",
+  "startTime": "10:00 AM",
+  "image_url": "https://...",
+  "event_is_live": true,
+  "activePins": 0,
+  "voting": {
+    "totalVotes": 18450,
+    "costPerVote": 50,
+    "contestantCount": 6,
+    "estimatedRevenue": 922500,
+    "leaderboard": [
+      {
+        "_id": "...",
+        "fullname": "Ada Okonkwo",
+        "nickname": "Ada",
+        "image_url": "https://...",
+        "vote_count": 4820,
+        "pct": 26.1
+      }
+    ]
+  }
+}
+```
+
+> `voting` is only present when `type === "VOTING"`. For `TICKETING` events the response contains `tickets` instead, and for `FORM-SALES` it contains `forms`.
+
+---
+
+### 14. Voter List
+
+```
+GET /who-voted-for-me/:eventId
+```
+
+**Auth:** None (public endpoint — token is accepted but not required)  
+**Use case:** Full list of voters across all contestants for this event. Includes voter contact details and per-voter vote totals.
+
+**Response**
+
+```json
+{
+  "voters": [
+    {
+      "fullname": "Tunde Bakare",
+      "username": "tundeb",
+      "email": "tunde@example.com",
+      "phone": "08012345678",
+      "image_url": null,
+      "votes": 200,
+      "date": "2025-11-04T09:15:00.000Z",
+      "contestant": {
+        "fullname": "Ada Okonkwo",
+        "nickname": "Ada",
+        "image_url": "https://..."
+      },
+      "message": "We love you Ada!",
+      "total_amount": 9000
+    }
+  ]
+}
+```
+
+> The response key may be `voters`, `votes`, or `data` depending on server version — check all three when parsing (see [Vote Transaction Fields](#vote-transaction-fields)).
+
+---
+
+### 15. Set Vote Goal
+
+```http
+PATCH /v2/event-owner/event/:eventId/vote-goal
+```
+
+**Auth:** ✅ Event owner  
+**Use case:** Set or update the vote target for a voting event. The goal appears as a progress bar on the public voting page (`goalProgress`). Send `0` to remove the goal.
+
+Only valid for `VOTING` type events.
+
+Request body — send `{ "goal": <number> }` where `goal` is a non-negative integer. Pass `0` to remove the goal.
+
+Response — set goal:
+
+```json
+{ "message": "Vote goal updated.", "goal": 10000 }
+```
+
+Response — remove goal (`goal: 0`):
+
+```json
+{ "message": "Vote goal removed.", "goal": 0 }
+```
+
+> The goal is stored in `event.voting_properties.numberOfSlot` and reflected immediately in `GET /v2/vote/contestant/:contestantId` as `goalProgress`.
+
+---
+
 ## Email Notifications (Automatic)
 
 No client action required — these fire server-side on every confirmed Paystack payment.

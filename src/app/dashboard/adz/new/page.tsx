@@ -1,3 +1,5 @@
+"use client"
+
 import AdzCampaignForm from '../_components/AdzCampaignForm'
 
 export default function NewAdzCampaignPage() {

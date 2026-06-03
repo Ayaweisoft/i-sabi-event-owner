@@ -788,11 +788,55 @@ export interface IVoteRecord {
     ref?: string
     message?: string
     date: string
+    // New fields from VOTING-API.md §VoteTransaction
+    packageId?: string
+    referrer?:  string
+    channel?:   'app' | 'web' | 'share'
 }
 
 export interface IVoteRecordsResponse {
     transList: IVoteRecord[]
     transanctionCount: number
+}
+
+// ── Vote Packages (VOTING-API.md §2, §5, §6, §7) ──────────────────────────────
+
+export interface IVotePackage {
+    _id:            string
+    eventId:        string
+    contestantId:   string
+    name:           string
+    description?:   string
+    votes:          number        // votes granted per purchase
+    price:          number        // total price in Naira
+    active:         boolean
+    totalSlots:     number        // 0 = unlimited
+    soldSlots:      number
+    availableSlots: number | null // null = unlimited
+    isSoldOut:      boolean
+}
+
+export interface IVotePackagesResponse {
+    packages: IVotePackage[]
+}
+
+export interface ICreateVotePackage {
+    eventId:       string
+    contestantId:  string
+    name:          string
+    votes:         number
+    price:         number
+    description?:  string
+    totalSlots?:   number
+}
+
+export interface IUpdateVotePackage {
+    name?:        string
+    description?: string
+    price?:       number
+    votes?:       number
+    totalSlots?:  number
+    active?:      boolean
 }
 
 export interface ISubmitTicketType {

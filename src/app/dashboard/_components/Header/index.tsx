@@ -5,6 +5,8 @@ import { BiMenu } from 'react-icons/bi'
 import { MdOutlineClose, MdNotifications } from 'react-icons/md'
 import { TbLogout2 } from 'react-icons/tb'
 import Link from 'next/link'
+import Image from 'next/image'
+import Logo from '@/assets/logo.png'
 import Links from './Links'
 import useAuthStore from '@/hooks/useAuth'
 import { usePathname, useRouter } from 'next/navigation'
@@ -49,10 +51,33 @@ const DashboardHeader = () => {
             style={{ backgroundColor: '#ffffff', borderBottom: '1px solid #d4e8d6' }}
         >
             <div className="flex items-center justify-between w-full gap-4 px-6 py-3.5">
-                {/* Page title */}
-                <h1 className="text-base font-bold" style={{ color: '#07360E' }}>
-                    {pageTitle}
-                </h1>
+                {/* Mobile: brand logo  |  Desktop: page title (logo lives in SideNav) */}
+                <div className="flex items-center gap-3">
+                    {/* Mobile: hamburger on the left opens the left-side drawer */}
+                    <button
+                        onClick={() => setIsOpen((v) => !v)}
+                        className="p-2 md:hidden rounded-xl"
+                        style={{ color: '#3d5c42' }}
+                        aria-label="Open menu"
+                    >
+                        {isOpen
+                            ? <MdOutlineClose className="text-2xl" />
+                            : <BiMenu className="text-2xl" />
+                        }
+                    </button>
+                    {/* Mobile logo — same sizing approach as login page */}
+                    <Link href={ROUTES.OWNER.INDEX} className="md:hidden">
+                        <Image
+                            src={Logo}
+                            alt="i-sabi"
+                            style={{ width: '5rem', height: 'auto' }}
+                            priority
+                        />
+                    </Link>
+                    <h1 className="hidden md:block text-base font-bold" style={{ color: '#07360E' }}>
+                        {pageTitle}
+                    </h1>
+                </div>
 
                 {/* Right actions */}
                 <div className="flex items-center gap-2">
@@ -109,17 +134,6 @@ const DashboardHeader = () => {
                         )}
                     </div>
 
-                    {/* Mobile hamburger */}
-                    <button
-                        onClick={() => setIsOpen((v) => !v)}
-                        className="p-2 md:hidden rounded-xl"
-                        style={{ color: '#3d5c42' }}
-                    >
-                        {isOpen
-                            ? <MdOutlineClose className="text-2xl" />
-                            : <BiMenu className="text-2xl" />
-                        }
-                    </button>
                 </div>
             </div>
 
