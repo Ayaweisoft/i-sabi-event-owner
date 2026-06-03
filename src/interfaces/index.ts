@@ -521,7 +521,7 @@ export interface IEventSummary {
         revenue: number
         checkedIn: number
         checkInRate: number
-        types: { ticketType: string; amount: number; purchased: number }[]
+        types: { ticketType: string; amount: number; purchased: number; totalSlots: number; soldSlots: number; isSoldOut: boolean }[]
         recent: ITicketPurchase[]
     }
     voting?: {
@@ -676,30 +676,46 @@ export interface IPinsResponse {
     count: number
 }
 
+/** Shape returned by the updated GET /who-voted-for-me/:eventId controller */
 export interface IWhoVotedEntry {
-    _id: string
-    contestant_id: string
-    purchased_vote: number
-    total_amount: number
-    message?: string
-    date: string
+    // New shape (VoteTransaction-based, with optional profile enrichment)
+    fullname:  string
+    username?: string | null
+    email:     string
+    phone?:    string
+    image_url?: string | null
+    votes:     number        // total votes cast by this voter
+    date:      string
+
+    // Legacy fields — kept for backwards compatibility with old responses
+    _id?:            string
+    contestant_id?:  string
+    purchased_vote?: number
+    total_amount?:   number
+    message?:        string
     contestant?: { fullname: string; nickname: string; image_url: string }
 }
 
 export interface IWhoVotedResponse {
-    votes?: IWhoVotedEntry[]
-    data?: IWhoVotedEntry[]
+    voters?: IWhoVotedEntry[]   // new field name (post-fix)
+    votes?:  IWhoVotedEntry[]   // legacy field name
+    data?:   IWhoVotedEntry[]   // legacy fallback
 }
 
 // ── Event management types ─────────────────────────────────────────────────────
 
 export interface ITicketType {
-    _id: string
+    _id:        string
     ticketType: string
-    amount: string
-    purchased: number
-    eventId: string
-    imageUrl?: string
+    amount:     string
+    purchased:  number
+    eventId:    string
+    imageUrl?:  string
+    // ── Slot / capacity fields (added for ticket slot feature) ──
+    totalSlots:      number          // 0 = unlimited
+    soldSlots:       number          // atomically incremented on each purchase
+    availableSlots:  number | null   // null = unlimited; server-computed
+    isSoldOut:       boolean
 }
 
 export interface ITicketTypesResponse {
@@ -780,10 +796,11 @@ export interface IVoteRecordsResponse {
 }
 
 export interface ISubmitTicketType {
-    eventId: string
+    eventId:    string
     ticketType: string
-    amount: string
-    imageUrl?: string
+    amount:     string
+    imageUrl?:  string
+    totalSlots: number   // 0 = unlimited
 }
 
 export interface ICreateContestant {

@@ -58,7 +58,8 @@ export default function VotesTab({ eventId }: Props) {
         return point
     })
 
-    const voteLog  = whoVoted?.votes ?? whoVoted?.data ?? []
+    // voters = new field; votes / data = legacy fallbacks
+    const voteLog  = whoVoted?.voters ?? whoVoted?.votes ?? whoVoted?.data ?? []
     const transList = records?.transList ?? []
 
     const totalVotes   = transList.reduce((s, r) => s + r.purchased_vote, 0)
@@ -120,26 +121,41 @@ export default function VotesTab({ eventId }: Props) {
                         }
                     />
                     <div className="flex flex-col divide-y" style={{ borderColor: BORDER }}>
-                        {voteLog.slice(0, 30).map((v, i) => (
-                            <div key={i} className="flex items-center justify-between py-2.5">
-                                <div>
-                                    <p className="text-sm font-semibold">
-                                        {v.contestant?.fullname || 'Contestant'} · {v.purchased_vote} vote{v.purchased_vote !== 1 ? 's' : ''}
-                                    </p>
-                                    {v.message && (
-                                        <p className="text-xs italic mt-0.5" style={{ color: TEXT_LIGHT }}>
-                                            &ldquo;{v.message}&rdquo;
+                        {voteLog.slice(0, 30).map((v, i) => {
+                            // Normalise across old shape (contestant/purchased_vote/total_amount)
+                            // and new shape (fullname/votes).
+                            const voterName  = v.fullname || v.contestant?.fullname || 'Voter'
+                            const voteCount  = v.votes    ?? v.purchased_vote ?? 1
+                            const amount     = v.total_amount ?? 0
+                            return (
+                                <div key={i} className="flex items-center justify-between py-2.5">
+                                    <div>
+                                        <p className="text-sm font-semibold">
+                                            {voterName}
+                                            {v.username && (
+                                                <span className="text-xs font-normal ml-1" style={{ color: TEXT_LIGHT }}>
+                                                    &#64;{v.username}
+                                                </span>
+                                            )}
+                                            {' '}· {voteCount} vote{voteCount !== 1 ? 's' : ''}
                                         </p>
-                                    )}
+                                        {v.message && (
+                                            <p className="text-xs italic mt-0.5" style={{ color: TEXT_LIGHT }}>
+                                                &ldquo;{v.message}&rdquo;
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div className="text-right shrink-0 ml-3">
+                                        {amount > 0 && (
+                                            <p className="text-sm font-bold" style={{ color: GREEN }}>
+                                                +{formatNaira(amount)}
+                                            </p>
+                                        )}
+                                        <p className="text-xs" style={{ color: TEXT_LIGHT }}>{timeAgo(v.date)}</p>
+                                    </div>
                                 </div>
-                                <div className="text-right shrink-0 ml-3">
-                                    <p className="text-sm font-bold" style={{ color: GREEN }}>
-                                        +{formatNaira(v.total_amount)}
-                                    </p>
-                                    <p className="text-xs" style={{ color: TEXT_LIGHT }}>{timeAgo(v.date)}</p>
-                                </div>
-                            </div>
-                        ))}
+                            )
+                        })}
                     </div>
                 </Card>
             )}
