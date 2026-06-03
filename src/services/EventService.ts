@@ -8,6 +8,7 @@ import {
     ISubmitTicketType,
     ICreateContestant,
 } from '@/interfaces'
+import type { ICreateVotePackage, IUpdateVotePackage } from '@/interfaces'
 
 const Auth = (token: string) => ({
     headers: { Authorization: `Bearer ${token}` },
@@ -91,6 +92,12 @@ export const apiAddContestant = (
     { token }: { id: string; token: string },
 ) => BaseService.post('create-contestant', data, Auth(token))
 
+/** PUT /update-contestant/:id — update name, nickname, or image */
+export const apiUpdateContestant = (
+    data: { fullname?: string; nickname?: string; image_url?: string },
+    { id, token }: { id: string; token: string },
+) => BaseService.put(`update-contestant/${id}`, data, Auth(token))
+
 /** DELETE /delete-contestant/:id — id = contestant _id */
 export const apiDeleteContestant = (
     _: null,
@@ -136,3 +143,51 @@ export const apiGetEventVoteRevenue = (
     token: string,
     { id }: { id: string },
 ) => BaseService.get(`get-event-records/${id}`, Auth(token))
+
+// ── Vote Packages (VOTING-API.md §2, §5, §6, §7) ─────────────────────────────
+
+/**
+ * GET /v2/vote/:eventId/packages?contestantId=
+ * Public — no token required. id = eventId.
+ * Pass contestantId as a query param via the params object when needed.
+ */
+export const apiGetVotePackages = (
+    _token: string,
+    { id, contestantId }: { id: string; contestantId?: string },
+) => {
+    const url = contestantId
+        ? `v2/vote/${id}/packages?contestantId=${contestantId}`
+        : `v2/vote/${id}/packages`
+    return NoAuthService.get(url)
+}
+
+/** POST /v2/vote/packages — Create a vote package (event owner) */
+export const apiCreateVotePackage = (
+    data: ICreateVotePackage,
+    { token }: { id: string; token: string },
+) => BaseService.post('v2/vote/packages', data, Auth(token))
+
+/** PATCH /v2/vote/packages/:id — Edit name, price, slots, active. id = package _id */
+export const apiUpdateVotePackage = (
+    data: IUpdateVotePackage,
+    { id, token }: { id: string; token: string },
+) => BaseService.patch(`v2/vote/packages/${id}`, data, Auth(token))
+
+/**
+ * DELETE /v2/vote/packages/:id — Soft-delete (sets active:false). id = package _id.
+ * Mutation-style: first arg unused.
+ */
+export const apiDeleteVotePackage = (
+    _: null,
+    { id, token }: { id: string; token: string },
+) => BaseService.delete(`v2/vote/packages/${id}`, Auth(token))
+
+/**
+ * GET /v2/vote/contestant/:contestantId — full single-contestant page data
+ * (contestant, event, packages, topSupporters, goalProgress).
+ * Public — no token required. id = contestantId.
+ */
+export const apiGetContestantVotePage = (
+    _token: string,
+    { id }: { id: string },
+) => NoAuthService.get(`v2/vote/contestant/${id}`)

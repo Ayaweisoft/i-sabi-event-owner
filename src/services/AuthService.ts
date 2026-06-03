@@ -68,6 +68,12 @@ export const apiGetVoteTrend = (token: string, { id, period }: { id: string; per
         params: { period: period || 'daily' },
     })
 
+/** PATCH /v2/event-owner/event/:id/vote-goal — set or remove the vote target */
+export const apiSetVoteGoal = (
+    token: string,
+    { id, goal }: { id: string; goal: number },
+) => BaseService.patch(`v2/event-owner/event/${id}/vote-goal`, { goal }, Auth(token))
+
 // ── Check-in management endpoints ─────────────────────────────────────────────
 
 export const apiGetCheckinStats = (token: string, { id }: { id: string }) =>
@@ -88,8 +94,9 @@ export const apiAddCheckinPin = (token: string, data: { eventId: string; pin: st
 export const apiDeleteCheckinPin = (token: string, { eventId, pin }: { eventId: string; pin: string }) =>
     BaseService.delete(`v2/checkin/${eventId}/pins/${pin}`, Auth(token))
 
+// NOTE: baseURL already contains /api — do NOT add api/ prefix here
 export const apiGetWhoVoted = (token: string, { id }: { id: string }) =>
-    BaseService.get(`api/who-voted-for-me/${id}`, Auth(token))
+    BaseService.get(`who-voted-for-me/${id}`, Auth(token))
 
 // ── Submission endpoints ───────────────────────────────────────────────────────
 

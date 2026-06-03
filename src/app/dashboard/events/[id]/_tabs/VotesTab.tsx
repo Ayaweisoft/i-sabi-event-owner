@@ -58,7 +58,8 @@ export default function VotesTab({ eventId }: Props) {
         return point
     })
 
-    const voteLog  = whoVoted?.votes ?? whoVoted?.data ?? []
+    // voters = new field; votes / data = legacy fallbacks
+    const voteLog  = whoVoted?.voters ?? whoVoted?.votes ?? whoVoted?.data ?? []
     const transList = records?.transList ?? []
 
     const totalVotes   = transList.reduce((s, r) => s + r.purchased_vote, 0)
@@ -120,26 +121,41 @@ export default function VotesTab({ eventId }: Props) {
                         }
                     />
                     <div className="flex flex-col divide-y" style={{ borderColor: BORDER }}>
-                        {voteLog.slice(0, 30).map((v, i) => (
-                            <div key={i} className="flex items-center justify-between py-2.5">
-                                <div>
-                                    <p className="text-sm font-semibold">
-                                        {v.contestant?.fullname || 'Contestant'} · {v.purchased_vote} vote{v.purchased_vote !== 1 ? 's' : ''}
-                                    </p>
-                                    {v.message && (
-                                        <p className="text-xs italic mt-0.5" style={{ color: TEXT_LIGHT }}>
-                                            &ldquo;{v.message}&rdquo;
+                        {voteLog.slice(0, 30).map((v, i) => {
+                            // Normalise across old shape (contestant/purchased_vote/total_amount)
+                            // and new shape (fullname/votes).
+                            const voterName  = v.fullname || v.contestant?.fullname || 'Voter'
+                            const voteCount  = v.votes    ?? v.purchased_vote ?? 1
+                            const amount     = v.total_amount ?? 0
+                            return (
+                                <div key={i} className="flex items-center justify-between py-2.5">
+                                    <div>
+                                        <p className="text-sm font-semibold">
+                                            {voterName}
+                                            {v.username && (
+                                                <span className="text-xs font-normal ml-1" style={{ color: TEXT_LIGHT }}>
+                                                    &#64;{v.username}
+                                                </span>
+                                            )}
+                                            {' '}· {voteCount} vote{voteCount !== 1 ? 's' : ''}
                                         </p>
-                                    )}
+                                        {v.message && (
+                                            <p className="text-xs italic mt-0.5" style={{ color: TEXT_LIGHT }}>
+                                                &ldquo;{v.message}&rdquo;
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div className="text-right shrink-0 ml-3">
+                                        {amount > 0 && (
+                                            <p className="text-sm font-bold" style={{ color: GREEN }}>
+                                                +{formatNaira(amount)}
+                                            </p>
+                                        )}
+                                        <p className="text-xs" style={{ color: TEXT_LIGHT }}>{timeAgo(v.date)}</p>
+                                    </div>
                                 </div>
-                                <div className="text-right shrink-0 ml-3">
-                                    <p className="text-sm font-bold" style={{ color: GREEN }}>
-                                        +{formatNaira(v.total_amount)}
-                                    </p>
-                                    <p className="text-xs" style={{ color: TEXT_LIGHT }}>{timeAgo(v.date)}</p>
-                                </div>
-                            </div>
-                        ))}
+                            )
+                        })}
                     </div>
                 </Card>
             )}
@@ -153,9 +169,28 @@ export default function VotesTab({ eventId }: Props) {
                             <div key={i} className="flex items-center justify-between py-2.5">
                                 <div>
                                     <p className="text-sm font-semibold">{r.purchased_vote} votes</p>
-                                    <p className="text-xs" style={{ color: TEXT_LIGHT }}>
-                                        {r.ref ? `Ref: ${r.ref.slice(0, 12)}…` : ''}
-                                    </p>
+                                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                                        {r.ref && (
+                                            <span className="text-xs" style={{ color: TEXT_LIGHT }}>
+                                                Ref: {r.ref.slice(0, 12)}…
+                                            </span>
+                                        )}
+                                        {r.channel && (
+                                            <span className="text-xs px-1.5 py-0.5 rounded-full font-medium"
+                                                  style={{
+                                                      background: r.channel === 'app' ? '#e8f5ea' : r.channel === 'share' ? '#fef3c7' : '#f0f6ff',
+                                                      color:      r.channel === 'app' ? '#1a5c28' : r.channel === 'share' ? '#92400e' : '#1e40af',
+                                                  }}>
+                                                {r.channel}
+                                            </span>
+                                        )}
+                                        {r.packageId && (
+                                            <span className="text-xs px-1.5 py-0.5 rounded-full font-medium"
+                                                  style={{ background: 'rgba(201,168,76,.1)', color: '#a8893a' }}>
+                                                pkg
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
                                 <div className="text-right">
                                     <p className="text-sm font-bold" style={{ color: GREEN }}>
