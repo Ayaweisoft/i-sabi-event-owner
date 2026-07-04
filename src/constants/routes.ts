@@ -18,6 +18,10 @@ export const ROUTES = {
             DETAIL: (id: string) => `/dashboard/adz/${id}`,
             EDIT: (id: string) => `/dashboard/adz/${id}/edit`,
         },
+        FORMS: {
+            INDEX: "/dashboard/forms",
+            DETAIL: (id: string) => `/dashboard/forms/${id}`,
+        },
         WALLET: "/dashboard/wallet",
         NOTIFICATIONS: "/dashboard/notifications",
         TRANSACTIONS: "/dashboard/transactions",
@@ -26,5 +30,6 @@ export const ROUTES = {
             INDEX: "/dashboard/withdraw",
             CREATE: "/dashboard/withdraw",
         },
+        RECONCILIATION: "/dashboard/reconciliation",
     },
 }
