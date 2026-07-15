@@ -4,11 +4,12 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { MdArrowBack, MdArrowForward, MdContentCopy, MdAdd, MdDelete, MdEvent, MdPlace } from 'react-icons/md'
+import { MdArrowBack, MdArrowForward, MdContentCopy, MdAdd, MdDelete, MdEvent, MdPlace, MdVisibility, MdClose } from 'react-icons/md'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import NoResult from '@/components/NoResult'
+import { FieldValue, FieldValueCompact } from '@/components/ImagePreview'
 import useFetch from '@/hooks/useFetch'
 import useMutate from '@/hooks/useMutate'
 import useCopyToClipboard from '@/hooks/useCopy'
@@ -26,6 +27,7 @@ import {
     IFormField,
     IFormShareInfo,
     IFormStep,
+    IFormSubmission,
     IFormSubmissionsResponse,
     IUpdateFormPayload,
     FORM_FIELD_TYPES,
@@ -166,6 +168,15 @@ const FormDetailClient = ({ formId }: { formId: string }) => {
         submissions.forEach((s) => Object.keys(s.data || {}).forEach((k) => keys.add(k)))
         return Array.from(keys)
     }, [submissions])
+
+    // Submission `data` keys are field `name`s — join against the form's field
+    // definitions so image/video/file uploads render as previews, not raw URLs.
+    const fieldByName = useMemo(
+        () => new Map((form?.fields || []).map((f) => [f.name, f])),
+        [form?.fields],
+    )
+
+    const [selectedSubmission, setSelectedSubmission] = useState<IFormSubmission | null>(null)
 
     if (isLoading) {
         return <NoResult isLoading desc="Loading form…" />
@@ -409,7 +420,8 @@ const FormDetailClient = ({ formId }: { formId: string }) => {
                             <thead>
                                 <tr className="border-b border-[#ecf2eb] text-left text-xs uppercase tracking-wide text-slate-500">
                                     <th className="py-2 pr-4">Submitted</th>
-                                    {submissionColumns.map((col) => <th key={col} className="py-2 pr-4">{col}</th>)}
+                                    {submissionColumns.map((col) => <th key={col} className="py-2 pr-4">{fieldByName.get(col)?.label || col}</th>)}
+                                    <th className="py-2 pr-4" />
                                 </tr>
                             </thead>
                             <tbody>
@@ -417,8 +429,15 @@ const FormDetailClient = ({ formId }: { formId: string }) => {
                                     <tr key={s._id} className="border-b border-[#f3f6f2]">
                                         <td className="py-2 pr-4 whitespace-nowrap text-slate-500">{formatFormDate(s.createdAt)}</td>
                                         {submissionColumns.map((col) => (
-                                            <td key={col} className="py-2 pr-4 max-w-[240px] truncate">{String(s.data?.[col] ?? '—')}</td>
+                                            <td key={col} className="py-2 pr-4 max-w-[240px] align-top">
+                                                <FieldValueCompact value={s.data?.[col] as string | number | boolean | null} type={fieldByName.get(col)?.type} />
+                                            </td>
                                         ))}
+                                        <td className="py-2 pr-4 whitespace-nowrap">
+                                            <Button variant="ghost" size="sm" onClick={() => setSelectedSubmission(s)}>
+                                                <MdVisibility /> View
+                                            </Button>
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -433,6 +452,37 @@ const FormDetailClient = ({ formId }: { formId: string }) => {
                     </div>
                 )}
             </Card>
+
+            {selectedSubmission && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setSelectedSubmission(null)} />
+                    <div className="relative z-10 w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border border-[#d7e6d6] bg-white shadow-xl">
+                        <div className="sticky top-0 flex items-center justify-between border-b border-[#ecf2eb] bg-white px-5 py-4">
+                            <div>
+                                <h3 className="text-sm font-bold text-slate-900">Submission detail</h3>
+                                <p className="mt-0.5 text-xs text-slate-500">{formatFormDate(selectedSubmission.createdAt)}</p>
+                            </div>
+                            <button onClick={() => setSelectedSubmission(null)} className="rounded-xl p-2 text-slate-500 transition hover:bg-muted">
+                                <MdClose className="text-xl" />
+                            </button>
+                        </div>
+                        <div className="flex flex-col gap-3 p-5">
+                            {Object.entries(selectedSubmission.data || {}).map(([key, value]) => (
+                                <div key={key}>
+                                    <p className="mb-1 text-xs font-semibold text-slate-600">{fieldByName.get(key)?.label || key}</p>
+                                    <div className="rounded-xl border border-[#d7e6d6] bg-[#f7fbf6] px-4 py-3 text-sm">
+                                        <FieldValue
+                                            value={value as string | number | boolean | null}
+                                            type={fieldByName.get(key)?.type}
+                                            label={fieldByName.get(key)?.label || key}
+                                        />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

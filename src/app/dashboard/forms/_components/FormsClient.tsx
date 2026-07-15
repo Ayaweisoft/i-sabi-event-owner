@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
-import { MdArrowForward } from 'react-icons/md'
+import { MdArrowForward, MdGridView, MdTableRows } from 'react-icons/md'
 import NoResult from '@/components/NoResult'
 import { Button } from '@/components/ui/button'
 import useFetch from '@/hooks/useFetch'
@@ -15,6 +15,7 @@ import { Card, SectionTitle, FormStatusBadge, formatFormDate, getPriceLabel, fie
 
 const FormsClient = () => {
     const [status, setStatus] = useState<'ALL' | 'ACTIVE' | 'PENDING'>('ALL')
+    const [view, setView] = useState<'card' | 'table'>('card')
 
     const { data, isLoading, isFetching } = useFetch<IFormsListResponse>({
         api: apiGetFormsByOwner,
@@ -67,9 +68,27 @@ const FormsClient = () => {
                             <option value="PENDING">Pending / Inactive</option>
                         </select>
                     </label>
-                    <p className="text-sm text-slate-500">
-                        {isFetching ? 'Refreshing…' : `${filtered.length} form${filtered.length === 1 ? '' : 's'} loaded`}
-                    </p>
+                    <div className="flex items-center gap-3">
+                        <p className="text-sm text-slate-500">
+                            {isFetching ? 'Refreshing…' : `${filtered.length} form${filtered.length === 1 ? '' : 's'} loaded`}
+                        </p>
+                        <div className="flex items-center rounded-xl border border-[#d7e6d6] p-1">
+                            <button
+                                onClick={() => setView('card')}
+                                aria-label="Card view"
+                                className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium transition ${view === 'card' ? 'bg-[#2d8c3e] text-white' : 'text-slate-500'}`}
+                            >
+                                <MdGridView className="text-base" /> Cards
+                            </button>
+                            <button
+                                onClick={() => setView('table')}
+                                aria-label="Table view"
+                                className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium transition ${view === 'table' ? 'bg-[#2d8c3e] text-white' : 'text-slate-500'}`}
+                            >
+                                <MdTableRows className="text-base" /> Table
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </Card>
 
@@ -78,6 +97,41 @@ const FormsClient = () => {
                     isLoading={isLoading}
                     desc="No forms match the selected filter yet. Forms are created when you submit a Form Sales event from the i-sabi app."
                 />
+            ) : view === 'table' ? (
+                <Card className="overflow-x-auto p-0">
+                    <table className="w-full min-w-[700px] border-collapse text-sm">
+                        <thead>
+                            <tr className="border-b border-[#ecf2eb] text-left text-xs uppercase tracking-wide text-slate-500">
+                                <th className="py-3 pl-5 pr-4">Title</th>
+                                <th className="py-3 pr-4">Event</th>
+                                <th className="py-3 pr-4">Status</th>
+                                <th className="py-3 pr-4">Price</th>
+                                <th className="py-3 pr-4">Fields</th>
+                                <th className="py-3 pr-4">Created</th>
+                                <th className="py-3 pr-5" />
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {filtered.map((form) => (
+                                <tr key={form._id} className="border-b border-[#f3f6f2]">
+                                    <td className="py-3 pl-5 pr-4 font-medium text-slate-900">{form.title}</td>
+                                    <td className="py-3 pr-4 text-slate-500">{eventNameById.get(form.eventId) || 'Event'}</td>
+                                    <td className="py-3 pr-4"><FormStatusBadge active={form.active} /></td>
+                                    <td className="py-3 pr-4 text-slate-500">{getPriceLabel(form)}</td>
+                                    <td className="py-3 pr-4 text-slate-500">{fieldCount(form)}</td>
+                                    <td className="py-3 pr-4 whitespace-nowrap text-slate-500">{formatFormDate(form.createdAt)}</td>
+                                    <td className="py-3 pr-5 whitespace-nowrap">
+                                        <Button asChild variant="outline" size="sm" className="rounded-full">
+                                            <Link href={ROUTES.OWNER.FORMS.DETAIL(form._id)}>
+                                                Manage <MdArrowForward className="text-base" />
+                                            </Link>
+                                        </Button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </Card>
             ) : (
                 <div className="grid gap-4 xl:grid-cols-2">
                     {filtered.map((form) => (
