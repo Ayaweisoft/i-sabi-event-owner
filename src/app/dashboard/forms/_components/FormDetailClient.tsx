@@ -1,9 +1,10 @@
 "use client"
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { MdArrowBack, MdContentCopy, MdAdd, MdDelete } from 'react-icons/md'
+import { MdArrowBack, MdArrowForward, MdContentCopy, MdAdd, MdDelete, MdEvent, MdPlace } from 'react-icons/md'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -18,6 +19,8 @@ import {
     apiGetFormSubmissions,
     apiUpdateForm,
 } from '@/services/EventService'
+import { apiGetEvents } from '@/services/AuthService'
+import { IEventResponse } from '@/interfaces'
 import {
     IForm,
     IFormField,
@@ -34,6 +37,20 @@ const blankField = (): IFormField => ({
     label: '', name: '', type: 'text', required: false, options: [],
 })
 
+// Mirrors the badge styling in dashboard/events/page.tsx so an event reads
+// the same way wherever it shows up.
+const EVENT_TYPE_EMOJI: Record<string, string> = {
+    TICKETING: '🎟',
+    VOTING: '🗳',
+    'FORM-SALES': '📋',
+}
+
+const EVENT_STATUS_COLORS: Record<string, string> = {
+    APPROVED: 'bg-green-100 text-green-700',
+    PENDING: 'bg-yellow-100 text-yellow-700',
+    REJECTED: 'bg-red-100 text-red-700',
+}
+
 const slugifyName = (label: string) =>
     label.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'field'
 
@@ -49,6 +66,15 @@ const FormDetailClient = ({ formId }: { formId: string }) => {
         requireAuth: true,
         enabled: !!formId,
     })
+
+    // Forms only carry eventId — join against the owner's events for the
+    // human-readable details, same as the forms list.
+    const { data: eventsData, isLoading: eventsLoading } = useFetch<IEventResponse>({
+        api: apiGetEvents,
+        key: ['events', 'my-event-list'],
+        requireAuth: true,
+    })
+    const event = eventsData?.myEvent?.find((e) => e._id === form?.eventId)
 
     const { data: shareInfo } = useFetch<IFormShareInfo>({
         api: apiGetFormShareInfo,
@@ -70,7 +96,7 @@ const FormDetailClient = ({ formId }: { formId: string }) => {
     const [title, setTitle] = useState('')
     const [description, setDescription] = useState('')
     const [active, setActive] = useState(false)
-    const [colorTheme, setColorTheme] = useState<IForm['colorTheme']>('ocean')
+    const [colorTheme, setColorTheme] = useState<IForm['colorTheme']>('isabi')
     const [colorHex, setColorHex] = useState('')
     const [fields, setFields] = useState<IFormField[]>([])
     const [steps, setSteps] = useState<IFormStep[]>([])
@@ -165,6 +191,65 @@ const FormDetailClient = ({ formId }: { formId: string }) => {
                         <SectionTitle title={form.title} subtitle={`Created ${formatFormDate(form.createdAt)} · ${getPriceLabel(form)}`} />
                     </div>
                 </div>
+            </Card>
+
+            {/* ── Event ──────────────────────────────────────────────────── */}
+            <Card className="p-6">
+                <SectionTitle title="Event" subtitle="The event this form's submissions belong to." />
+                {!event ? (
+                    <p className="mt-4 text-sm text-slate-500">
+                        {eventsLoading ? 'Loading event…' : "This form's event couldn't be found — it may have been removed."}
+                    </p>
+                ) : (
+                    <div className="mt-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                        <div className="flex items-center gap-4">
+                            <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-muted">
+                                {event.image_url ? (
+                                    <Image src={event.image_url} fill alt={event.eventName} className="object-cover" />
+                                ) : (
+                                    <div className="flex h-full w-full items-center justify-center text-2xl">
+                                        {EVENT_TYPE_EMOJI[event.type] ?? '📅'}
+                                    </div>
+                                )}
+                            </div>
+                            <div className="space-y-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <span className="flex items-center gap-1.5 text-base font-semibold text-slate-900">
+                                        <MdEvent className="text-lg text-[#2d8c3e]" />
+                                        {event.eventName}
+                                    </span>
+                                    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${EVENT_STATUS_COLORS[event.status] || 'bg-gray-100 text-gray-600'}`}>
+                                        {event.status}
+                                    </span>
+                                    {event.event_is_live && (
+                                        <span className="flex items-center gap-1 rounded-full bg-green-500 px-2 py-0.5 text-xs font-semibold text-white">
+                                            <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
+                                            LIVE
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500">
+                                    <span>{EVENT_TYPE_EMOJI[event.type]} {event.type?.toLowerCase()}</span>
+                                    {event.venue && (
+                                        <span className="flex items-center gap-1">
+                                            <MdPlace className="text-base" /> {event.venue}
+                                        </span>
+                                    )}
+                                    {event.startDate && (
+                                        <span>
+                                            {formatFormDate(String(event.startDate))}{event.startTime ? ` · ${event.startTime}` : ''}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                        <Button asChild variant="outline" size="sm" className="rounded-full self-start md:self-auto">
+                            <Link href={ROUTES.OWNER.EVENT(event._id)}>
+                                View event <MdArrowForward className="text-base" />
+                            </Link>
+                        </Button>
+                    </div>
+                )}
             </Card>
 
             {/* ── Share link ─────────────────────────────────────────────── */}

@@ -46,7 +46,7 @@ export interface IFormStep {
 }
 
 export const FORM_THEME_NAMES = [
-    'ocean', 'forest', 'sunset', 'violet', 'rose', 'slate', 'midnight', 'custom',
+    'isabi', 'ocean', 'forest', 'sunset', 'violet', 'rose', 'slate', 'midnight', 'custom',
 ] as const
 export type FormThemeName = typeof FORM_THEME_NAMES[number]
 

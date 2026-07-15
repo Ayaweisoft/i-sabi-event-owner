@@ -55,11 +55,17 @@ const useMutate = <T, K>(
 
             console.log("error2", showErrorMessage, error)
             if (showErrorMessage) {
-                if (typeof error?.response?.data?.message === "string") {
-                    toast.error(error?.response?.data?.message || "An Error Occurred!");
-                } else {
-                    toast.error(error?.response?.data?.message[0] || "An Error Occurred!");
-                }
+                // Not every endpoint replies the same shape — most of
+                // form-controller.js (and others) send { error: '...' }
+                // rather than { message: '...' }. Indexing [0] into
+                // data.message when it's undefined used to throw here,
+                // silently swallowing the real error instead of showing it.
+                const data = error?.response?.data;
+                const msg = typeof data?.message === "string" ? data.message
+                    : Array.isArray(data?.message) ? data.message[0]
+                    : typeof data?.error === "string" ? data.error
+                    : undefined;
+                toast.error(msg || "An Error Occurred!");
             } else {
                 // toast.error("An Error Occurred!");
             }
