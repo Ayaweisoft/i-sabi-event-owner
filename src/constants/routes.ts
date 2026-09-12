@@ -22,6 +22,9 @@ export const ROUTES = {
             INDEX: "/dashboard/forms",
             DETAIL: (id: string) => `/dashboard/forms/${id}`,
         },
+        GROUPS: {
+            INDEX: "/dashboard/groups",
+        },
         WALLET: "/dashboard/wallet",
         NOTIFICATIONS: "/dashboard/notifications",
         TRANSACTIONS: "/dashboard/transactions",

@@ -487,6 +487,11 @@ export interface IContestantLeader {
     image_url: string
     vote_count: number
     pct: number
+    my_code?: number
+    vote_category_id?: string | null
+    // Entries sharing this value are the same real person entered into more
+    // than one vote category — see ICreateContestant/vote_category_id.
+    contestantGroupId?: string
 }
 
 export interface ITicketPurchase {
@@ -868,12 +873,18 @@ export interface IContestantShareLink {
     my_code:    number
     vote_count: number
     votingLink: string
+    vote_category_id?: string | null
+    voteCategoryName?: string | null
+    // Entries sharing this value are the same real person entered into more
+    // than one vote category — see ICreateContestant/vote_category_id.
+    contestantGroupId: string
 }
 
 export interface IContestantShareLinksResponse {
     eventId:     string
     eventName:   string
     slug:        string
+    categories:  IVoteCategory[]
     contestants: IContestantShareLink[]
 }
 
@@ -909,6 +920,74 @@ export interface ICreateContestant {
     fullname: string
     nickname: string
     image_url: string
+    vote_category_id?: string | null
+}
+
+// ── Vote Categories ───────────────────────────────────────────────────────────
+// Segments a VOTING event's contestants into groups (e.g. "Teen Division").
+// Named VoteCategory, not the bare "Category" — this platform separately
+// uses "category" for trivia questions, an unrelated concept.
+export interface IVoteCategory {
+    _id: string
+    event_id: string
+    name: string
+    slug: string
+    sortOrder: number
+}
+
+export interface IVoteCategoriesResponse {
+    categories: IVoteCategory[]
+}
+
+export interface ICreateVoteCategory {
+    name: string
+    sortOrder?: number
+}
+
+export interface IUpdateVoteCategory {
+    name?: string
+    sortOrder?: number
+}
+
+// POST /v2/vote/:id/contestants/:contestantId/categories — enters an
+// existing contestant's profile into an additional category they also
+// qualify for (a new, independently-numbered entry linked via
+// contestantGroupId), rather than moving them out of their current one.
+export interface IAddContestantToCategory {
+    vote_category_id: string
+}
+
+// ── Event Groups ("classic") ─────────────────────────────────────────────────
+// Bundles an owner's own existing events (any mix of ticketing/voting/forms)
+// behind one shareable link — a thin reference layer, not a new event type.
+export interface IEventGroup {
+    _id: string
+    name: string
+    slug: string
+    ownerUsername: string
+    image_url?: string
+    description?: string
+    eventIds: string[]
+    createdAt: string
+    updatedAt: string
+}
+
+export interface IEventGroupsResponse {
+    groups: IEventGroup[]
+}
+
+export interface ICreateEventGroup {
+    name: string
+    eventIds: string[]
+    image_url?: string
+    description?: string
+}
+
+export interface IUpdateEventGroup {
+    name?: string
+    eventIds?: string[]
+    image_url?: string
+    description?: string
 }
 
 // ── Submissions ────────────────────────────────────────────────────────────────
