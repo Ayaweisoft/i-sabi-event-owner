@@ -2,7 +2,7 @@ import { INav } from '@/interfaces';
 import { ROUTES } from './routes';
 import { BiSolidCollection } from 'react-icons/bi';
 import { TbTransactionEuro } from 'react-icons/tb';
-import { MdDashboard, MdEvent, MdNotifications, MdAccountBalanceWallet, MdArticle, MdCampaign } from 'react-icons/md';
+import { MdDashboard, MdEvent, MdNotifications, MdAccountBalanceWallet, MdArticle, MdCampaign, MdVerifiedUser, MdDynamicForm } from 'react-icons/md';
 
 const dashboardNavs: INav[] = [
     {
@@ -35,6 +35,12 @@ const dashboardNavs: INav[] = [
                 Icon: MdAccountBalanceWallet,
             },
             {
+                id: 11,
+                title: "Forms",
+                link: ROUTES.OWNER.FORMS.INDEX,
+                Icon: MdDynamicForm,
+            },
+            {
                 id: 5,
                 title: "Submissions",
                 link: ROUTES.OWNER.SUBMISSIONS,
@@ -57,6 +63,12 @@ const dashboardNavs: INav[] = [
                 title: "Withdraw",
                 link: ROUTES.OWNER.WITHDRAW.INDEX,
                 Icon: BiSolidCollection,
+            },
+            {
+                id: 9,
+                title: "Reconciliation",
+                link: ROUTES.OWNER.RECONCILIATION,
+                Icon: MdVerifiedUser,
             },
         ],
     },

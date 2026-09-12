@@ -7,27 +7,23 @@ import useFetch from '@/hooks/useFetch'
 import NoResult from '@/components/NoResult'
 import StatCard from '@/components/StatCard'
 import ProgressBar from '@/components/ProgressBar'
+import CheckinTab from './_tabs/CheckinTab'
 import {
     apiGetEventSummary,
     apiGetSalesTrend,
-    apiGetCheckinTrend,
-    apiGetCheckinStats,
-    apiGetCheckinAttendees,
-    apiGetCheckinPins,
     apiGetAudienceInsights,
     apiGetHealthScore,
     apiGetVoteTrend,
     apiGetWhoVoted,
 } from '@/services/AuthService'
 import {
-    IEventSummary, ISalesTrend, ICheckinTrend,
-    ICheckinStats, IAttendeesResponse, IPinsResponse,
+    IEventSummary, ISalesTrend,
     IAudienceInsights, IHealthScore, IVoteTrend,
     IWhoVotedResponse,
 } from '@/interfaces'
 import { formatNaira, timeAgo } from '@/lib/utils'
 import { ROUTES } from '@/constants/routes'
-import { MdArrowBack, MdCheckCircle, MdPending, MdOutlineFileDownload } from 'react-icons/md'
+import { MdArrowBack, MdOutlineFileDownload } from 'react-icons/md'
 import { BsCircleFill } from 'react-icons/bs'
 import {
     BarChart, Bar, LineChart, Line, XAxis, YAxis,
@@ -107,8 +103,10 @@ const OverviewTab = ({ event, id }: { event: IEventSummary; id: string }) => {
     return (
         <div className="flex flex-col gap-4">
             {/* Event banner */}
-            <div className="relative h-44 rounded-2xl overflow-hidden">
-                <Image src={event.image_url} fill alt={event.eventName} className="object-cover" />
+            <div className="relative h-44 rounded-2xl overflow-hidden bg-muted">
+                {event.image_url && (
+                    <Image src={event.image_url} fill alt={event.eventName} className="object-cover" />
+                )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
                 <div className="absolute bottom-3 left-4 right-4 text-white">
                     <div className="flex items-center gap-2 mb-1">
@@ -352,176 +350,6 @@ const TicketsTab = ({ event, id }: { event: IEventSummary; id: string }) => {
     )
 }
 
-// ── Check-in Tab ──────────────────────────────────────────────────────────────
-const CheckinTab = ({ id }: { id: string }) => {
-    const [attendeeFilter, setAttendeeFilter] = useState<'all' | 'checked' | 'pending'>('all')
-
-    const { data: stats, isLoading: statsLoading } = useFetch<ICheckinStats>({
-        api: apiGetCheckinStats,
-        key: ['CHECKIN_STATS', id],
-        param: { id },
-    })
-
-    const { data: attendees, isLoading: attendeesLoading } = useFetch<IAttendeesResponse>({
-        api: apiGetCheckinAttendees,
-        key: ['ATTENDEES', id, attendeeFilter],
-        param: { id, status: attendeeFilter },
-    })
-
-    const { data: pinsData } = useFetch<IPinsResponse>({
-        api: apiGetCheckinPins,
-        key: ['PINS', id],
-        param: { id },
-    })
-
-    const { data: trendData } = useFetch<ICheckinTrend>({
-        api: apiGetCheckinTrend,
-        key: ['CHECKIN_TREND_H', id],
-        param: { id, period: 'hourly' },
-    })
-
-    return (
-        <div className="flex flex-col gap-4">
-            {/* Live attendance */}
-            <Card>
-                <SectionHeader title="Live Attendance" />
-                {stats ? (
-                    <>
-                        <div className="flex items-end gap-2 mb-2">
-                            <span className="text-3xl font-black" style={{ color: GREEN }}>{stats.checkedIn}</span>
-                            <span className="text-base font-semibold mb-0.5" style={{ color: TEXT_LIGHT }}>
-                                checked in of {stats.totalSeats} sold
-                            </span>
-                        </div>
-                        <ProgressBar value={stats.percentFull} showLabel />
-                        <p className="text-xs mt-2" style={{ color: TEXT_LIGHT }}>
-                            {stats.remaining} ticket holders not yet arrived
-                        </p>
-                    </>
-                ) : (
-                    <p className="text-sm" style={{ color: TEXT_LIGHT }}>{statsLoading ? 'Loading…' : 'No data'}</p>
-                )}
-            </Card>
-
-            {/* Check-in trend */}
-            {trendData?.data && trendData.data.length > 0 && (
-                <Card>
-                    <SectionHeader title="Check-ins by Hour" />
-                    <ResponsiveContainer width="100%" height={160}>
-                        <BarChart data={trendData.data} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={BORDER} />
-                            <XAxis dataKey="label" tick={{ fontSize: 10, fill: TEXT_LIGHT }} />
-                            <YAxis tick={{ fontSize: 10, fill: TEXT_LIGHT }} />
-                            <Tooltip />
-                            <Bar dataKey="count" name="Check-ins" fill={GREEN} radius={[4, 4, 0, 0]} />
-                        </BarChart>
-                    </ResponsiveContainer>
-                </Card>
-            )}
-
-            {/* PINs */}
-            <Card>
-                <SectionHeader
-                    title="Check-in PINs"
-                    action={
-                        <span className="text-xs font-semibold" style={{ color: GREEN }}>
-                            {pinsData?.count || 0} active
-                        </span>
-                    }
-                />
-                {!pinsData?.pins?.length ? (
-                    <div className="text-xs rounded-xl px-3 py-2 border border-red-200 bg-red-50 text-red-700">
-                        ⚠️ No check-in PINs configured. Gate staff cannot scan tickets. Set PINs in the main i-sabi app.
-                    </div>
-                ) : (
-                    <div className="flex flex-col gap-2">
-                        {pinsData.pins.map((pin) => (
-                            <div
-                                key={pin}
-                                className="flex items-center justify-between px-3 py-2 rounded-lg"
-                                style={{ backgroundColor: SURFACE, border: `1px solid ${BORDER}` }}
-                            >
-                                <div className="flex items-center gap-2">
-                                    <BsCircleFill className="text-[8px]" style={{ color: GREEN }} />
-                                    <span className="text-sm font-bold tracking-widest">{pin}</span>
-                                </div>
-                                <span className="text-xs" style={{ color: TEXT_LIGHT }}>Active</span>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </Card>
-
-            {/* Attendees */}
-            <Card>
-                <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-xs font-bold uppercase tracking-widest" style={{ color: TEXT_LIGHT }}>Attendees</h3>
-                    <div className="flex gap-1">
-                        {(['all', 'checked', 'pending'] as const).map((f) => (
-                            <button
-                                key={f}
-                                onClick={() => setAttendeeFilter(f)}
-                                className="text-xs px-2.5 py-1 rounded-full border font-medium transition"
-                                style={{
-                                    backgroundColor: attendeeFilter === f ? GREEN : 'transparent',
-                                    color: attendeeFilter === f ? 'white' : TEXT_LIGHT,
-                                    borderColor: attendeeFilter === f ? GREEN : BORDER,
-                                }}
-                            >
-                                {f.charAt(0).toUpperCase() + f.slice(1)}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                {attendeesLoading && <p className="text-sm" style={{ color: TEXT_LIGHT }}>Loading attendees…</p>}
-                {!attendeesLoading && !attendees?.tickets?.length && (
-                    <p className="text-sm" style={{ color: TEXT_LIGHT }}>No attendees match this filter.</p>
-                )}
-                <div className="flex flex-col divide-y" style={{ borderColor: BORDER }}>
-                    {attendees?.tickets?.slice(0, 30).map((a, i) => {
-                        const checkedIn = (a.numberOfTicketUsed || 0) > 0
-                        return (
-                            <div key={i} className="flex items-center justify-between py-2.5">
-                                <div>
-                                    <p className="text-sm font-semibold">{a.name}</p>
-                                    <p className="text-xs" style={{ color: TEXT_LIGHT }}>
-                                        {a.ticketType} × {a.numberOfTicket}
-                                    </p>
-                                </div>
-                                <div className="text-right">
-                                    {checkedIn ? (
-                                        <>
-                                            <p className="text-xs font-bold flex items-center gap-1 justify-end" style={{ color: GREEN }}>
-                                                <MdCheckCircle /> Checked in
-                                            </p>
-                                            <p className="text-xs" style={{ color: TEXT_LIGHT }}>
-                                                {a.checkedInAt
-                                                    ? new Date(a.checkedInAt).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })
-                                                    : ''}
-                                            </p>
-                                        </>
-                                    ) : (
-                                        <p className="text-xs font-medium flex items-center gap-1 justify-end" style={{ color: TEXT_LIGHT }}>
-                                            <MdPending /> Pending
-                                        </p>
-                                    )}
-                                </div>
-                            </div>
-                        )
-                    })}
-                </div>
-
-                {(attendees?.total || 0) > 30 && (
-                    <p className="text-xs text-center mt-3" style={{ color: TEXT_LIGHT }}>
-                        Showing 30 of {attendees!.total} attendees
-                    </p>
-                )}
-            </Card>
-        </div>
-    )
-}
-
 // ── Contestants Tab (VOTING) ──────────────────────────────────────────────────
 const ContestantsTab = ({ event }: { event: IEventSummary }) => {
     if (!event.voting) return <p className="text-sm" style={{ color: TEXT_LIGHT }}>No voting data.</p>
@@ -614,7 +442,7 @@ const VotesTab = ({ event, id }: { event: IEventSummary; id: string }) => {
         return point
     })
 
-    const voteLog = whoVoted?.votes || whoVoted?.data || []
+    const voteLog = whoVoted?.voters || whoVoted?.votes || whoVoted?.data || []
 
     return (
         <div className="flex flex-col gap-4">
@@ -671,20 +499,27 @@ const VotesTab = ({ event, id }: { event: IEventSummary; id: string }) => {
                         }
                     />
                     <div className="flex flex-col divide-y" style={{ borderColor: BORDER }}>
-                        {voteLog.slice(0, 20).map((v, i) => (
-                            <div key={i} className="flex items-center justify-between py-2.5">
-                                <div>
-                                    <p className="text-sm font-semibold">
-                                        {v.contestant?.fullname || 'Contestant'} · {v.purchased_vote} vote{v.purchased_vote !== 1 ? 's' : ''}
-                                    </p>
-                                    {v.message && <p className="text-xs italic" style={{ color: TEXT_LIGHT }}>&ldquo;{v.message}&rdquo;</p>}
+                        {voteLog.slice(0, 20).map((v, i) => {
+                            const voterName  = v.fullname || v.contestant?.fullname || 'Voter'
+                            const voteCount  = v.votes ?? v.purchased_vote ?? 0
+                            const amount     = v.total_amount
+                            return (
+                                <div key={i} className="flex items-center justify-between py-2.5">
+                                    <div>
+                                        <p className="text-sm font-semibold">
+                                            {voterName} · {voteCount} vote{voteCount !== 1 ? 's' : ''}
+                                        </p>
+                                        {v.message && <p className="text-xs italic" style={{ color: TEXT_LIGHT }}>&ldquo;{v.message}&rdquo;</p>}
+                                    </div>
+                                    <div className="text-right">
+                                        {amount != null && (
+                                            <p className="text-sm font-bold" style={{ color: GREEN }}>+{formatNaira(amount)}</p>
+                                        )}
+                                        <p className="text-xs" style={{ color: TEXT_LIGHT }}>{timeAgo(v.date)}</p>
+                                    </div>
                                 </div>
-                                <div className="text-right">
-                                    <p className="text-sm font-bold" style={{ color: GREEN }}>+{formatNaira(v.total_amount)}</p>
-                                    <p className="text-xs" style={{ color: TEXT_LIGHT }}>{timeAgo(v.date)}</p>
-                                </div>
-                            </div>
-                        ))}
+                            )
+                        })}
                     </div>
                 </Card>
             )}
@@ -935,7 +770,7 @@ const FinanceTab = ({ event }: { event: IEventSummary }) => {
     else if (event.type === 'VOTING' && event.voting)     gross = event.voting.estimatedRevenue
     else if (event.type === 'FORM-SALES' && event.forms)  gross = event.forms.revenue
 
-    const platformCutPct  = event.type === 'TICKETING' ? 13 : 0
+    const platformCutPct  = event.type === 'TICKETING' ? (event.tickets?.platformFeePercentage ?? 0) : 0
     const platformCut     = Math.round(gross * (platformCutPct / 100))
     const yourEarnings    = gross - platformCut
 
@@ -1047,7 +882,7 @@ const EventWorkspace = () => {
             <div className="pb-10">
                 {activeTab === 'overview'    && <OverviewTab     event={event} id={id} />}
                 {activeTab === 'tickets'     && <TicketsTab      event={event} id={id} />}
-                {activeTab === 'checkin'     && <CheckinTab      id={id} />}
+                {activeTab === 'checkin'     && <CheckinTab      eventId={id} />}
                 {activeTab === 'audience'    && <AudienceTab     id={id} />}
                 {activeTab === 'insights'    && <InsightsTab     id={id} />}
                 {activeTab === 'contestants' && <ContestantsTab  event={event} />}

@@ -32,12 +32,18 @@ const EventCard = ({ event }: { event: IEvent }) => (
         className="flex flex-col bg-white border border-border rounded-2xl overflow-hidden hover:shadow-md transition group"
     >
         <div className="relative h-36 bg-muted">
-            <Image
-                src={event.image_url}
-                fill
-                alt={event.eventName}
-                className="object-cover group-hover:scale-105 transition-transform duration-300"
-            />
+            {event.image_url ? (
+                <Image
+                    src={event.image_url}
+                    fill
+                    alt={event.eventName}
+                    className="object-cover group-hover:scale-105 transition-transform duration-300"
+                />
+            ) : (
+                <div className="w-full h-full flex items-center justify-center text-3xl">
+                    {typeEmoji[event.type] ?? '📅'}
+                </div>
+            )}
             <div className="absolute top-2 left-2 flex gap-1">
                 <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${statusColors[event.status] || 'bg-gray-100 text-gray-600'}`}>
                     {event.status}
@@ -56,7 +62,7 @@ const EventCard = ({ event }: { event: IEvent }) => (
                 <div>
                     <span className="text-base font-semibold line-clamp-1">{event.eventName}</span>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                        {typeEmoji[event.type]} {event.type.toLowerCase()} · {event.venue || 'No venue'}
+                        {typeEmoji[event.type]} {event.type?.toLowerCase()} · {event.venue || 'No venue'}
                     </p>
                 </div>
                 <MdChevronRight className="text-muted-foreground text-xl mt-1 shrink-0" />
@@ -74,7 +80,7 @@ const EventCard = ({ event }: { event: IEvent }) => (
                     <span className="text-xs text-muted-foreground">
                         {event.type === 'TICKETING' ? 'Sold' : event.type === 'VOTING' ? 'Votes' : 'Submissions'}
                     </span>
-                    <span className="text-sm font-bold">{event.totalCount.toLocaleString()}</span>
+                    <span className="text-sm font-bold">{(event.totalCount ?? 0).toLocaleString()}</span>
                 </div>
                 <span className="text-xs text-muted-foreground">
                     {formatNaira(0)} earned

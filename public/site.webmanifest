@@ -1,0 +1,23 @@
+{
+  "name": "i-sabi Event Owner Dashboard",
+  "short_name": "i-sabi Owner",
+  "description": "Manage your i-sabi events, ticket sales, check-ins, votes, and revenue.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4f8f4",
+  "theme_color": "#2d8c3e",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "apple touch icon"
+    }
+  ]
+}

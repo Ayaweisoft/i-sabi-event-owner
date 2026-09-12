@@ -1,5 +1,6 @@
 import { QueryClient } from '@tanstack/react-query'
 import { apiGetAdzCatalog, apiGetAdzEvents, apiListAdzCampaigns } from '@/services/AdzService'
+import { clearPersistedQueryCache } from '@/providers/QueryProvider'
 
 export const ADZ_QUERY_KEYS = {
     catalog: ['ADZ_CATALOG'] as const,
@@ -15,8 +16,8 @@ export const ADZ_CACHE_POLICY = {
         gcTime: 60 * 60 * 1000,
     },
     events: {
-        staleTime: 15 * 60 * 1000,
-        gcTime: 30 * 60 * 1000,
+        staleTime: 2 * 60 * 1000,
+        gcTime: 15 * 60 * 1000,
     },
     campaigns: {
         staleTime: 2 * 60 * 1000,
@@ -49,6 +50,7 @@ export const primeAdzCache = async (queryClient: QueryClient, token: string) => 
 }
 
 export const invalidateAdzCache = async (queryClient: QueryClient, campaignId?: string) => {
+    clearPersistedQueryCache()
     await Promise.allSettled([
         queryClient.invalidateQueries({ queryKey: ['ADZ_CAMPAIGNS'] }),
         queryClient.invalidateQueries({ queryKey: ['ADZ_EVENTS'] }),

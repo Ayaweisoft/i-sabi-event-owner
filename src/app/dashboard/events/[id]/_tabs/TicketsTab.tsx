@@ -23,6 +23,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 const GREEN      = '#2d8c3e'
 const GREEN_DEEP = '#07360E'
 const GOLD       = '#F5C518'
+const RED        = '#e53e3e'
 const SURFACE    = '#f4f8f4'
 const BORDER     = '#d4e8d6'
 const TEXT_MID   = '#3d5c42'
@@ -41,6 +42,26 @@ const SectionHeader = ({ title, action }: { title: string; action?: React.ReactN
     </div>
 )
 
+/** Pill shown when a ticket type is at capacity */
+const SoldOutBadge = () => (
+    <span
+        className="text-xs font-bold px-2 py-0.5 rounded-full"
+        style={{ backgroundColor: '#fee2e2', color: RED }}
+    >
+        Sold Out
+    </span>
+)
+
+/** Pill shown when ≤ 5 slots remain */
+const LowStockBadge = ({ remaining }: { remaining: number }) => (
+    <span
+        className="text-xs font-semibold px-2 py-0.5 rounded-full"
+        style={{ backgroundColor: '#fef3c7', color: '#92400e' }}
+    >
+        🔥 {remaining} left
+    </span>
+)
+
 interface Props { eventId: string }
 
 export default function TicketsTab({ eventId }: Props) {
@@ -50,6 +71,7 @@ export default function TicketsTab({ eventId }: Props) {
         ticketType: '',
         amount: '',
         imageUrl: '',
+        totalSlots: 0,
     })
 
     const {
@@ -82,7 +104,7 @@ export default function TicketsTab({ eventId }: Props) {
         onSuccess: () => {
             toast.success('Ticket type added')
             setShowAddForm(false)
-            setNewTicket({ eventId, ticketType: '', amount: '', imageUrl: '' })
+            setNewTicket({ eventId, ticketType: '', amount: '', imageUrl: '', totalSlots: 0 })
             refetchTypes()
         },
         showErrorMessage: true,
@@ -102,7 +124,6 @@ export default function TicketsTab({ eventId }: Props) {
 
     const totalRevenue  = tickets.reduce((s, t) => s + (Number(t.amountPaid) || 0), 0)
     const totalSold     = tickets.reduce((s, t) => s + (t.numberOfTicket || 0), 0)
-    // Revenue by ticket type
     const revenueByType: Record<string, number> = {}
     const soldByType:    Record<string, number> = {}
     for (const t of tickets) {
@@ -110,10 +131,13 @@ export default function TicketsTab({ eventId }: Props) {
         soldByType[t.ticketType]    = (soldByType[t.ticketType]    || 0) + (t.numberOfTicket || 0)
     }
 
+    // Summary: total capacity across all finite types
+    const totalCapacity = types.reduce((s, t) => s + (t.totalSlots || 0), 0)
+
     return (
         <div className="flex flex-col gap-4">
             {/* Quick stats */}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <Card>
                     <p className="text-xs font-semibold uppercase" style={{ color: TEXT_LIGHT }}>Revenue</p>
                     <p className="text-lg font-bold" style={{ color: GREEN }}>{formatNaira(totalRevenue)}</p>
@@ -126,6 +150,15 @@ export default function TicketsTab({ eventId }: Props) {
                     <p className="text-xs font-semibold uppercase" style={{ color: TEXT_LIGHT }}>Types</p>
                     <p className="text-lg font-bold">{types.length}</p>
                 </Card>
+                {totalCapacity > 0 && (
+                    <Card>
+                        <p className="text-xs font-semibold uppercase" style={{ color: TEXT_LIGHT }}>Capacity</p>
+                        <p className="text-lg font-bold">{totalCapacity.toLocaleString()}</p>
+                        <p className="text-xs mt-0.5" style={{ color: TEXT_LIGHT }}>
+                            {totalSold} used · {Math.round((totalSold / totalCapacity) * 100)}%
+                        </p>
+                    </Card>
+                )}
             </div>
 
             {/* Ticket types */}
@@ -174,6 +207,29 @@ export default function TicketsTab({ eventId }: Props) {
                                 />
                             </div>
                         </div>
+
+                        {/* Slots field */}
+                        <div>
+                            <label className="text-xs font-medium mb-1 block" style={{ color: GREEN_DEEP }}>
+                                Available Slots{' '}
+                                <span className="font-normal" style={{ color: TEXT_LIGHT }}>(0 = unlimited)</span>
+                            </label>
+                            <input
+                                type="number"
+                                min={0}
+                                placeholder="e.g. 100"
+                                value={newTicket.totalSlots}
+                                onChange={(e) => setNewTicket((p) => ({ ...p, totalSlots: Math.max(0, Number(e.target.value)) }))}
+                                className="w-full px-3 py-2 text-sm rounded-lg outline-none"
+                                style={{ border: `1px solid ${BORDER}`, backgroundColor: '#fff' }}
+                            />
+                            <p className="text-xs mt-1" style={{ color: TEXT_LIGHT }}>
+                                {newTicket.totalSlots > 0
+                                    ? `Ticket will show "Sold Out" once all ${newTicket.totalSlots} slots are purchased.`
+                                    : 'No limit — available until you change this.'}
+                            </p>
+                        </div>
+
                         <div className="flex gap-2">
                             <button
                                 onClick={() => addMutation.mutate(newTicket)}
@@ -198,19 +254,39 @@ export default function TicketsTab({ eventId }: Props) {
                 {!typesLoading && types.length === 0 && (
                     <p className="text-sm py-2" style={{ color: TEXT_LIGHT }}>No ticket types yet. Add one above.</p>
                 )}
+
                 <div className="flex flex-col divide-y" style={{ borderColor: BORDER }}>
                     {types.map((t) => {
-                        const sold    = soldByType[t.ticketType]    || t.purchased || 0
-                        const revenue = revenueByType[t.ticketType] || 0
+                        const sold       = soldByType[t.ticketType] || t.purchased || 0
+                        const revenue    = revenueByType[t.ticketType] || 0
+                        const hasLimit   = (t.totalSlots ?? 0) > 0
+                        const available  = hasLimit ? Math.max(0, (t.availableSlots ?? t.totalSlots - (t.soldSlots ?? 0))) : null
+                        const soldOut    = t.isSoldOut ?? (hasLimit && sold >= t.totalSlots)
+                        const lowStock   = !soldOut && available !== null && available <= 5
+                        const slotPct    = hasLimit ? Math.round((sold / t.totalSlots) * 100) : 0
+
                         return (
                             <div key={t._id} className="py-3">
-                                <div className="flex items-center justify-between mb-1.5">
-                                    <div>
+                                {/* Header row */}
+                                <div className="flex items-center justify-between mb-1.5 flex-wrap gap-1">
+                                    <div className="flex items-center gap-2 flex-wrap">
                                         <span className="text-sm font-bold">{t.ticketType}</span>
-                                        <span className="text-xs ml-2" style={{ color: TEXT_LIGHT }}>{sold} sold</span>
+                                        <span className="text-xs" style={{ color: TEXT_LIGHT }}>{sold} sold</span>
+                                        {soldOut   && <SoldOutBadge />}
+                                        {lowStock  && <LowStockBadge remaining={available!} />}
+                                        {hasLimit  && !soldOut && !lowStock && (
+                                            <span className="text-xs" style={{ color: TEXT_LIGHT }}>
+                                                {available} of {t.totalSlots} left
+                                            </span>
+                                        )}
+                                        {!hasLimit && (
+                                            <span className="text-xs" style={{ color: TEXT_LIGHT }}>
+                                                Unlimited
+                                            </span>
+                                        )}
                                     </div>
                                     <div className="flex items-center gap-3">
-                                        <span className="text-sm font-bold" style={{ color: GREEN }}>
+                                        <span className="text-sm font-bold" style={{ color: soldOut ? RED : GREEN }}>
                                             {formatNaira(Number(t.amount))}
                                         </span>
                                         <button
@@ -226,7 +302,29 @@ export default function TicketsTab({ eventId }: Props) {
                                         </button>
                                     </div>
                                 </div>
-                                <ProgressBar value={Math.min(sold, 100)} max={100} showLabel />
+
+                                {/* Availability bar */}
+                                {hasLimit ? (
+                                    <div>
+                                        <div className="w-full h-2 rounded-full overflow-hidden" style={{ backgroundColor: BORDER }}>
+                                            <div
+                                                className="h-full rounded-full transition-all"
+                                                style={{
+                                                    width: `${slotPct}%`,
+                                                    backgroundColor: soldOut
+                                                        ? RED
+                                                        : slotPct >= 80 ? '#d97706' : GREEN,
+                                                }}
+                                            />
+                                        </div>
+                                        <p className="text-xs mt-0.5" style={{ color: TEXT_LIGHT }}>
+                                            {slotPct}% of {t.totalSlots} slots used
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <ProgressBar value={Math.min(sold, 100)} max={100} showLabel />
+                                )}
+
                                 {revenue > 0 && (
                                     <p className="text-xs mt-1" style={{ color: TEXT_LIGHT }}>
                                         Revenue: {formatNaira(revenue)}
@@ -281,18 +379,13 @@ export default function TicketsTab({ eventId }: Props) {
                 <SectionHeader
                     title="Recent Purchases"
                     action={
-                        <button
-                            className="text-xs font-semibold flex items-center gap-1"
-                            style={{ color: GREEN }}
-                        >
+                        <button className="text-xs font-semibold flex items-center gap-1" style={{ color: GREEN }}>
                             <MdOutlineFileDownload className="text-base" /> Export CSV
                         </button>
                     }
                 />
                 {historyLoading && <p className="text-sm py-2" style={{ color: TEXT_LIGHT }}>Loading…</p>}
-                {!historyLoading && tickets.length === 0 && (
-                    <NoResult isLoading={false} desc="No purchases yet." />
-                )}
+                {!historyLoading && tickets.length === 0 && <NoResult isLoading={false} desc="No purchases yet." />}
                 <div className="flex flex-col divide-y" style={{ borderColor: BORDER }}>
                     {tickets.slice(0, 40).map((p, i) => (
                         <div key={i} className="flex items-center justify-between py-3">
@@ -307,9 +400,7 @@ export default function TicketsTab({ eventId }: Props) {
                                 <p className="text-sm font-bold" style={{ color: GREEN }}>
                                     +{formatNaira(Number(p.amountPaid) || 0)}
                                 </p>
-                                <p className="text-xs" style={{ color: TEXT_LIGHT }}>
-                                    {timeAgo(p.date_purchased)}
-                                </p>
+                                <p className="text-xs" style={{ color: TEXT_LIGHT }}>{timeAgo(p.date_purchased)}</p>
                             </div>
                         </div>
                     ))}
