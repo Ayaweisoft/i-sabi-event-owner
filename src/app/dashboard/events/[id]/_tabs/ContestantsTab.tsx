@@ -16,7 +16,7 @@ import {
     ICreateVotePackage, IUpdateVotePackage,
 } from '@/interfaces'
 import { formatNaira } from '@/lib/utils'
-import { MdAdd, MdDelete, MdEdit, MdPackage } from 'react-icons/md'
+import { MdAdd, MdDelete, MdEdit, MdInventory2 } from 'react-icons/md'
 import { toast } from 'react-toastify'
 
 const GREEN      = '#2d8c3e'
@@ -295,7 +295,7 @@ export default function ContestantsTab({ eventId }: Props) {
                                                         color:      pkgsOpen ? '#fff' : GOLD_DARK,
                                                         background: pkgsOpen ? GOLD_DARK : 'rgba(201,168,76,.1)',
                                                     }}>
-                                                    <MdPackage className="text-base" />
+                                                    <MdInventory2 className="text-base" />
                                                 </button>
 
                                                 <button
