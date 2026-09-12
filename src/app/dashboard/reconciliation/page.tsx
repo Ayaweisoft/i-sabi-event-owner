@@ -1,5 +1,6 @@
 "use client"
 import React, { useState, useCallback } from 'react'
+import { AxiosError } from 'axios'
 import useAuthStore from '@/hooks/useAuth'
 import {
     apiGetReconciliationSummary,
@@ -10,13 +11,20 @@ import {
     apiResolvePayment,
     ReconciliationLog,
     ReconciliationSummary,
-    ReconciliationListResponse,
 } from '@/services/ReconciliationService'
 import { formatNaira } from '@/lib/utils'
 import {
     MdRefresh, MdSearch, MdClose,
     MdCheckCircle, MdError, MdPending, MdMoneyOff, MdVerifiedUser,
 } from 'react-icons/md'
+
+const getErrorMessage = (e: unknown, fallback: string): string => {
+    if (e instanceof AxiosError) {
+        const data = e.response?.data as { error?: string } | undefined
+        return data?.error || e.message || fallback
+    }
+    return e instanceof Error ? e.message : fallback
+}
 
 // ── Status helpers ────────────────────────────────────────────────────────────
 
@@ -92,9 +100,8 @@ const DetailModal = ({ log, token, onClose, onActionDone }: DetailModalProps) =>
             if (action === 'resolve') await apiResolvePayment(token, log.ref, notes)
             setMessage({ text: `${action.charAt(0).toUpperCase() + action.slice(1)} successful.`, ok: true })
             onActionDone()
-        } catch (e: any) {
-            const msg = e?.response?.data?.error || e?.message || 'Action failed'
-            setMessage({ text: msg, ok: false })
+        } catch (e: unknown) {
+            setMessage({ text: getErrorMessage(e, 'Action failed'), ok: false })
         } finally {
             setLoading(null)
         }
@@ -252,8 +259,8 @@ export default function ReconciliationPage() {
         try {
             const res = await apiGetReconciliationSummary(token)
             setSummary(res.data)
-        } catch (e: any) {
-            console.error('Summary load failed:', e?.message)
+        } catch (e: unknown) {
+            console.error('Summary load failed:', getErrorMessage(e, 'unknown error'))
         } finally {
             setSummaryLoading(false)
         }
@@ -275,8 +282,8 @@ export default function ReconciliationPage() {
             setLogs(res.data.logs)
             setPagination(res.data.pagination)
             setPage(pg)
-        } catch (e: any) {
-            setError(e?.response?.data?.error || 'Failed to load reconciliation records')
+        } catch (e: unknown) {
+            setError(getErrorMessage(e, 'Failed to load reconciliation records'))
         } finally {
             setLoading(false)
         }
