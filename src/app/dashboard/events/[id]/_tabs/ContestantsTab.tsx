@@ -9,15 +9,18 @@ import {
     apiAddContestant, apiDeleteContestant,
     apiGetVotePackages, apiCreateVotePackage,
     apiUpdateVotePackage, apiDeleteVotePackage,
+    apiGetContestantShareLinks,
 } from '@/services/EventService'
 import {
     IContestantsResponse, ICreateContestant,
     IVotePackage, IVotePackagesResponse,
     ICreateVotePackage, IUpdateVotePackage,
+    IContestantShareLinksResponse,
 } from '@/interfaces'
 import { formatNaira } from '@/lib/utils'
-import { MdAdd, MdDelete, MdEdit, MdInventory2 } from 'react-icons/md'
+import { MdAdd, MdDelete, MdEdit, MdInventory2, MdContentCopy } from 'react-icons/md'
 import { toast } from 'react-toastify'
+import useCopyToClipboard from '@/hooks/useCopy'
 
 const GREEN      = '#2d8c3e'
 const GREEN_DEEP = '#07360E'
@@ -62,6 +65,18 @@ export default function ContestantsTab({ eventId }: Props) {
         key: ['CONTESTANTS', eventId],
         param: { id: eventId },
     })
+
+    // Ready-made share links, keyed by contestant _id — computed server-side
+    // (event_control.js's getContestantShareLinks) so this app doesn't have
+    // to re-implement the eventName-to-slug logic that already exists on the
+    // backend and in the mobile app.
+    const { data: shareData } = useFetch<IContestantShareLinksResponse>({
+        api: apiGetContestantShareLinks,
+        key: ['CONTESTANT_SHARE_LINKS', eventId],
+        param: { id: eventId },
+    })
+    const votingLinkById = new Map((shareData?.contestants ?? []).map(c => [c._id, c.votingLink]))
+    const { copy } = useCopyToClipboard()
 
     const addMutation = useMutate<ICreateContestant, unknown>(apiAddContestant, {
         onSuccess: () => {
@@ -286,6 +301,19 @@ export default function ContestantsTab({ eventId }: Props) {
                                             <div className="flex items-center gap-1.5">
                                                 <span className="text-sm font-black">{c.vote_count.toLocaleString()}</span>
 
+                                                {/* Copy this contestant's voting link */}
+                                                <button
+                                                    onClick={() => {
+                                                        const link = votingLinkById.get(c._id)
+                                                        if (link) copy(link)
+                                                    }}
+                                                    disabled={!votingLinkById.get(c._id)}
+                                                    title="Copy voting link"
+                                                    className="p-1.5 rounded-lg transition disabled:opacity-40"
+                                                    style={{ color: GREEN, background: 'rgba(45,140,62,.1)' }}>
+                                                    <MdContentCopy className="text-base" />
+                                                </button>
+
                                                 {/* Packages toggle */}
                                                 <button
                                                     onClick={() => openPackages(c._id)}
@@ -322,6 +350,11 @@ export default function ContestantsTab({ eventId }: Props) {
                                                 {pct}%
                                             </span>
                                         </div>
+                                        {costPerVote > 0 && (
+                                            <p className="text-xs mt-1" style={{ color: TEXT_LIGHT }}>
+                                                Revenue: <span style={{ color: GREEN, fontWeight: 600 }}>{formatNaira(c.vote_count * costPerVote)}</span>
+                                            </p>
+                                        )}
                                     </div>
                                 </div>
 
