@@ -24,18 +24,23 @@ import {
     apiGetContestantShareLinks,
     apiGetVotingSettings,
     apiUpdateVotingSettings,
+    apiCreateVoteCategory,
+    apiUpdateVoteCategory,
+    apiDeleteVoteCategory,
+    apiAddContestantToCategory,
 } from '@/services/EventService'
 import {
     IEventSummary, ISalesTrend,
     IAudienceInsights, IHealthScore, IVoteTrend,
-    IWhoVotedResponse, IContestantShareLinksResponse,
+    IWhoVotedResponse, IContestantShareLinksResponse, IContestantLeader,
     IVotingSettings, IUpdateVotingSettings,
 } from '@/interfaces'
 import { formatNaira, timeAgo } from '@/lib/utils'
 import { ROUTES } from '@/constants/routes'
-import { MdArrowBack, MdOutlineFileDownload, MdContentCopy } from 'react-icons/md'
+import { MdArrowBack, MdOutlineFileDownload, MdContentCopy, MdAdd, MdEdit, MdDeleteOutline, MdCheck, MdClose } from 'react-icons/md'
 import { BsCircleFill } from 'react-icons/bs'
 import useCopyToClipboard from '@/hooks/useCopy'
+import { useQueryClient } from '@tanstack/react-query'
 import {
     BarChart, Bar, LineChart, Line, XAxis, YAxis,
     Tooltip, ResponsiveContainer, CartesianGrid, Legend,
@@ -363,24 +368,219 @@ const TicketsTab = ({ event, id }: { event: IEventSummary; id: string }) => {
 }
 
 // ── Contestants Tab (VOTING) ──────────────────────────────────────────────────
+const extractErrorMessage = (error: unknown, fallback: string) => {
+    const data = (error as { response?: { data?: { message?: string | string[]; error?: string } } })?.response?.data
+    if (typeof data?.message === 'string') return data.message
+    if (Array.isArray(data?.message)) return data.message[0]
+    if (typeof data?.error === 'string') return data.error
+    return fallback
+}
+
 const ContestantsTab = ({ event, id }: { event: IEventSummary; id: string }) => {
+    const token = useAuthStore((s) => s.token)
+    const queryClient = useQueryClient()
+
     // Ready-made share links, keyed by contestant _id — GET /v2/vote/:id/share,
     // owner-or-admin gated (event_control.js's getContestantShareLinks). The
     // summary endpoint above doesn't carry my_code/slug, so this is a second
-    // small fetch rather than duplicating that slugify logic here too.
-    const { data: shareData } = useFetch<IContestantShareLinksResponse>({
+    // small fetch rather than duplicating that slugify logic here too. It's
+    // also the source of the category list for the panel below.
+    const { data: shareData, refetch: refetchShareData } = useFetch<IContestantShareLinksResponse>({
         api: apiGetContestantShareLinks,
         key: ['CONTESTANT_SHARE_LINKS', id],
         param: { id },
         enabled: !!event.voting,
     })
     const votingLinkById = new Map((shareData?.contestants ?? []).map((c) => [c._id, c.votingLink]))
+    const categories = shareData?.categories ?? []
     const { copy } = useCopyToClipboard()
+
+    const [busy, setBusy] = useState(false)
+    const [newCategoryName, setNewCategoryName] = useState('')
+    const [editingCategory, setEditingCategory] = useState<{ id: string; name: string } | null>(null)
+    const [addingToCategoryFor, setAddingToCategoryFor] = useState<string | null>(null)
+    const [pickedCategory, setPickedCategory] = useState('')
+
+    const refreshAll = () => {
+        refetchShareData()
+        queryClient.invalidateQueries({ queryKey: ['EVENT_SUMMARY', id] })
+    }
+
+    const run = async (action: () => Promise<unknown>, successMsg?: string) => {
+        setBusy(true)
+        try {
+            await action()
+            if (successMsg) toast.success(successMsg)
+            refreshAll()
+        } catch (error) {
+            toast.error(extractErrorMessage(error, 'Something went wrong'))
+        } finally {
+            setBusy(false)
+        }
+    }
+
+    const handleCreateCategory = async () => {
+        const name = newCategoryName.trim()
+        if (!name || !token) return
+        await run(() => apiCreateVoteCategory({ name }, { id, token }), 'Category added')
+        setNewCategoryName('')
+    }
+
+    const handleRenameCategory = async () => {
+        if (!editingCategory || !token) return
+        const name = editingCategory.name.trim()
+        if (!name) return
+        await run(() => apiUpdateVoteCategory({ name }, { id, voteCategoryId: editingCategory.id, token }), 'Category renamed')
+        setEditingCategory(null)
+    }
+
+    const handleDeleteCategory = (voteCategoryId: string) => {
+        if (!token) return
+        if (!window.confirm('Delete this category? Its contestants move to "Uncategorized" — they are never deleted.')) return
+        run(() => apiDeleteVoteCategory(null, { id, voteCategoryId, token }), 'Category removed')
+    }
+
+    const handleAddToCategory = async (contestantId: string) => {
+        if (!token || !pickedCategory) return
+        await run(
+            () => apiAddContestantToCategory({ vote_category_id: pickedCategory }, { id, contestantId, token }),
+            'Entered into category',
+        )
+        setAddingToCategoryFor(null)
+        setPickedCategory('')
+    }
 
     if (!event.voting) return <p className="text-sm" style={{ color: TEXT_LIGHT }}>No voting data.</p>
 
     const { leaderboard, totalVotes, estimatedRevenue, contestantCount, costPerVote } = event.voting
     const medals = ['🥇', '🥈', '🥉']
+
+    // Which category ids each real person (contestantGroupId) already
+    // occupies — so the picker only offers categories they're not in yet.
+    const categoryIdsByGroup = new Map<string, Set<string>>()
+    leaderboard.forEach((c) => {
+        if (!c.vote_category_id) return
+        const groupId = c.contestantGroupId || c._id
+        if (!categoryIdsByGroup.has(groupId)) categoryIdsByGroup.set(groupId, new Set())
+        categoryIdsByGroup.get(groupId)!.add(c.vote_category_id)
+    })
+
+    const renderContestantRow = (c: IContestantLeader, i: number, pctOverride?: number) => {
+        const pct = pctOverride ?? c.pct
+        const groupId = c.contestantGroupId || c._id
+        const availableCategories = categories.filter((cat) => !categoryIdsByGroup.get(groupId)?.has(cat._id))
+        return (
+            <div key={c._id} className="flex flex-col gap-1.5 py-1">
+                <div className="flex items-center gap-3">
+                    <span className="text-2xl w-8 text-center">
+                        {i < 3 ? medals[i] : <span className="text-base font-bold" style={{ color: TEXT_LIGHT }}>{i + 1}.</span>}
+                    </span>
+                    {c.image_url && (
+                        <Image
+                            src={c.image_url}
+                            width={44}
+                            height={44}
+                            alt={c.fullname}
+                            className="rounded-full object-cover w-11 h-11 border-2"
+                            style={{ borderColor: i === 0 ? GOLD : BORDER }}
+                        />
+                    )}
+                    <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                            <p className="text-sm font-bold truncate">
+                                {c.fullname}
+                                {c.my_code != null && <span className="font-normal" style={{ color: TEXT_LIGHT }}> · #{c.my_code}</span>}
+                            </p>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                                <span className="text-sm font-black">{c.vote_count.toLocaleString()}</span>
+                                <button
+                                    onClick={() => {
+                                        const link = votingLinkById.get(c._id)
+                                        if (link) copy(link)
+                                    }}
+                                    disabled={!votingLinkById.get(c._id)}
+                                    title="Copy voting link"
+                                    className="p-1.5 rounded-lg transition disabled:opacity-40"
+                                    style={{ color: GREEN, background: 'rgba(45,140,62,.1)' }}
+                                >
+                                    <MdContentCopy className="text-sm" />
+                                </button>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className="flex-1 h-2.5 rounded-full overflow-hidden" style={{ backgroundColor: BORDER }}>
+                                <div
+                                    className="h-full rounded-full"
+                                    style={{
+                                        width: `${pct}%`,
+                                        backgroundColor: i === 0 ? GREEN : i === 1 ? GOLD : TEXT_LIGHT,
+                                    }}
+                                />
+                            </div>
+                            <span className="text-xs font-semibold w-8" style={{ color: TEXT_LIGHT }}>{pct}%</span>
+                        </div>
+                        {costPerVote > 0 && (
+                            <p className="text-xs mt-1" style={{ color: TEXT_LIGHT }}>
+                                Revenue: <span style={{ color: GREEN, fontWeight: 600 }}>{formatNaira(c.vote_count * costPerVote)}</span>
+                            </p>
+                        )}
+                    </div>
+                </div>
+
+                {categories.length > 0 && (
+                    addingToCategoryFor === c._id ? (
+                        <div className="flex items-center gap-2 pl-14">
+                            <select
+                                value={pickedCategory}
+                                onChange={(e) => setPickedCategory(e.target.value)}
+                                className="flex-1 text-xs px-2 py-1.5 rounded-lg outline-none"
+                                style={{ border: `1px solid ${BORDER}` }}
+                            >
+                                <option value="">Choose a category…</option>
+                                {availableCategories.map((cat) => (
+                                    <option key={cat._id} value={cat._id}>{cat.name}</option>
+                                ))}
+                            </select>
+                            <button
+                                onClick={() => handleAddToCategory(c._id)}
+                                disabled={busy || !pickedCategory}
+                                className="text-xs font-semibold px-2.5 py-1.5 rounded-lg disabled:opacity-50"
+                                style={{ color: '#fff', background: GREEN }}
+                            >
+                                Add
+                            </button>
+                            <button
+                                onClick={() => { setAddingToCategoryFor(null); setPickedCategory('') }}
+                                className="text-xs font-semibold px-2 py-1.5"
+                                style={{ color: TEXT_LIGHT }}
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    ) : availableCategories.length > 0 && (
+                        <button
+                            onClick={() => setAddingToCategoryFor(c._id)}
+                            className="text-xs font-semibold pl-14 text-left w-fit flex items-center gap-1"
+                            style={{ color: GREEN }}
+                        >
+                            <MdAdd className="text-sm" /> Also enter in another category
+                        </button>
+                    )
+                )}
+            </div>
+        )
+    }
+
+    const grouped = categories.length > 0
+    const byCategory = grouped
+        ? categories.slice().sort((a, b) => a.sortOrder - b.sortOrder).map((cat) => ({
+            category: cat,
+            contestants: leaderboard.filter((c) => c.vote_category_id === cat._id).sort((a, b) => b.vote_count - a.vote_count),
+        }))
+        : []
+    const uncategorized = grouped
+        ? leaderboard.filter((c) => !c.vote_category_id).sort((a, b) => b.vote_count - a.vote_count)
+        : leaderboard
 
     return (
         <div className="flex flex-col gap-4">
@@ -403,65 +603,105 @@ const ContestantsTab = ({ event, id }: { event: IEventSummary; id: string }) => 
                 </Card>
             </div>
 
+            {/* Vote Categories — segment contestants into groups (e.g. "Teen
+                Division"), each numbered and voted on independently. A
+                contestant can be entered into more than one category they
+                qualify for via "Also enter in another category" below. */}
             <Card>
-                <SectionHeader title={`Leaderboard · ${totalVotes.toLocaleString()} total votes`} />
-                <div className="flex flex-col gap-4">
-                    {leaderboard.map((c, i) => (
-                        <div key={c._id} className="flex items-center gap-3">
-                            <span className="text-2xl w-8 text-center">
-                                {i < 3 ? medals[i] : <span className="text-base font-bold" style={{ color: TEXT_LIGHT }}>{i + 1}.</span>}
-                            </span>
-                            {c.image_url && (
-                                <Image
-                                    src={c.image_url}
-                                    width={44}
-                                    height={44}
-                                    alt={c.fullname}
-                                    className="rounded-full object-cover w-11 h-11 border-2"
-                                    style={{ borderColor: i === 0 ? GOLD : BORDER }}
-                                />
+                <SectionHeader title="Vote Categories" />
+                <div className="flex flex-col gap-2 mb-3">
+                    {categories.length === 0 && (
+                        <p className="text-xs" style={{ color: TEXT_LIGHT }}>
+                            No categories yet — every contestant shows in one combined leaderboard below.
+                        </p>
+                    )}
+                    {categories.slice().sort((a, b) => a.sortOrder - b.sortOrder).map((cat) => (
+                        <div key={cat._id} className="flex items-center justify-between gap-2 py-1.5 px-2 rounded-lg" style={{ background: SURFACE }}>
+                            {editingCategory?.id === cat._id ? (
+                                <>
+                                    <input
+                                        autoFocus
+                                        value={editingCategory.name}
+                                        onChange={(e) => setEditingCategory({ id: cat._id, name: e.target.value })}
+                                        className="flex-1 text-sm px-2 py-1 rounded-lg outline-none"
+                                        style={{ border: `1px solid ${BORDER}` }}
+                                    />
+                                    <button onClick={handleRenameCategory} disabled={busy} title="Save" style={{ color: GREEN }}><MdCheck /></button>
+                                    <button onClick={() => setEditingCategory(null)} title="Cancel" style={{ color: TEXT_LIGHT }}><MdClose /></button>
+                                </>
+                            ) : (
+                                <>
+                                    <span className="text-sm font-semibold flex-1 truncate">{cat.name}</span>
+                                    <span className="text-xs" style={{ color: TEXT_LIGHT }}>
+                                        {leaderboard.filter((c) => c.vote_category_id === cat._id).length} contestant(s)
+                                    </span>
+                                    <button onClick={() => setEditingCategory({ id: cat._id, name: cat.name })} title="Rename" style={{ color: TEXT_LIGHT }}><MdEdit /></button>
+                                    <button onClick={() => handleDeleteCategory(cat._id)} disabled={busy} title="Delete" style={{ color: '#c0392b' }}><MdDeleteOutline /></button>
+                                </>
                             )}
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center justify-between mb-1">
-                                    <p className="text-sm font-bold truncate">{c.fullname}</p>
-                                    <div className="flex items-center gap-1.5 shrink-0">
-                                        <span className="text-sm font-black">{c.vote_count.toLocaleString()}</span>
-                                        <button
-                                            onClick={() => {
-                                                const link = votingLinkById.get(c._id)
-                                                if (link) copy(link)
-                                            }}
-                                            disabled={!votingLinkById.get(c._id)}
-                                            title="Copy voting link"
-                                            className="p-1.5 rounded-lg transition disabled:opacity-40"
-                                            style={{ color: GREEN, background: 'rgba(45,140,62,.1)' }}
-                                        >
-                                            <MdContentCopy className="text-sm" />
-                                        </button>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <div className="flex-1 h-2.5 rounded-full overflow-hidden" style={{ backgroundColor: BORDER }}>
-                                        <div
-                                            className="h-full rounded-full"
-                                            style={{
-                                                width: `${c.pct}%`,
-                                                backgroundColor: i === 0 ? GREEN : i === 1 ? GOLD : TEXT_LIGHT,
-                                            }}
-                                        />
-                                    </div>
-                                    <span className="text-xs font-semibold w-8" style={{ color: TEXT_LIGHT }}>{c.pct}%</span>
-                                </div>
-                                {costPerVote > 0 && (
-                                    <p className="text-xs mt-1" style={{ color: TEXT_LIGHT }}>
-                                        Revenue: <span style={{ color: GREEN, fontWeight: 600 }}>{formatNaira(c.vote_count * costPerVote)}</span>
-                                    </p>
-                                )}
-                            </div>
                         </div>
                     ))}
                 </div>
+                <div className="flex items-center gap-2">
+                    <input
+                        value={newCategoryName}
+                        onChange={(e) => setNewCategoryName(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleCreateCategory() }}
+                        placeholder="e.g. Teen Division"
+                        className="flex-1 text-sm px-3 py-2 rounded-lg outline-none"
+                        style={{ border: `1px solid ${BORDER}` }}
+                    />
+                    <button
+                        onClick={handleCreateCategory}
+                        disabled={busy || !newCategoryName.trim()}
+                        className="text-xs font-bold px-3 py-2 rounded-lg text-white disabled:opacity-50 flex items-center gap-1"
+                        style={{ background: GREEN }}
+                    >
+                        <MdAdd /> Add Category
+                    </button>
+                </div>
             </Card>
+
+            {grouped ? (
+                <>
+                    {byCategory.map(({ category, contestants }) => {
+                        const categoryTotal = contestants.reduce((s, c) => s + c.vote_count, 0)
+                        return (
+                            <Card key={category._id}>
+                                <SectionHeader title={`${category.name} · ${contestants.length} contestant(s)`} />
+                                <div className="flex flex-col gap-4">
+                                    {contestants.map((c, i) => renderContestantRow(
+                                        c, i, categoryTotal > 0 ? Math.round((c.vote_count / categoryTotal) * 100) : 0,
+                                    ))}
+                                    {contestants.length === 0 && (
+                                        <p className="text-sm py-2" style={{ color: TEXT_LIGHT }}>No contestants in this category yet.</p>
+                                    )}
+                                </div>
+                            </Card>
+                        )
+                    })}
+                    {uncategorized.length > 0 && (
+                        <Card>
+                            <SectionHeader title={`Uncategorized · ${uncategorized.length}`} />
+                            <div className="flex flex-col gap-4">
+                                {(() => {
+                                    const uncategorizedTotal = uncategorized.reduce((s, c) => s + c.vote_count, 0)
+                                    return uncategorized.map((c, i) => renderContestantRow(
+                                        c, i, uncategorizedTotal > 0 ? Math.round((c.vote_count / uncategorizedTotal) * 100) : 0,
+                                    ))
+                                })()}
+                            </div>
+                        </Card>
+                    )}
+                </>
+            ) : (
+                <Card>
+                    <SectionHeader title={`Leaderboard · ${totalVotes.toLocaleString()} total votes`} />
+                    <div className="flex flex-col gap-4">
+                        {leaderboard.map((c, i) => renderContestantRow(c, i))}
+                    </div>
+                </Card>
+            )}
         </div>
     )
 }
