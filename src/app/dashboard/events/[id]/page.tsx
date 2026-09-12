@@ -1262,7 +1262,7 @@ const toDateInputValue = (d?: string) => (d ? d.slice(0, 10) : '')
 
 // ── Settings Tab (VOTING) ───────────────────────────────────────────────────────
 const SettingsTab = ({ event, id }: { event: IEventSummary; id: string }) => {
-    const { data: settings, isLoading } = useFetch<IVotingSettings>({
+    const { data: settings, isLoading, error, refetch } = useFetch<IVotingSettings>({
         api: apiGetVotingSettings,
         key: ['VOTING_SETTINGS', id],
         param: { id },
@@ -1283,7 +1283,23 @@ const SettingsTab = ({ event, id }: { event: IEventSummary; id: string }) => {
         showErrorMessage: true,
     })
 
-    if (isLoading || !form) return <NoResult isLoading desc="Loading voting settings…" />
+    if (isLoading) return <NoResult isLoading desc="Loading voting settings…" />
+
+    // Without this, a failed fetch (network hiccup, 403, server error) left
+    // `settings` — and therefore `form` — permanently null, and the tab sat
+    // on the loading spinner forever with no way out short of a hard refresh.
+    if (error || !settings) {
+        return (
+            <NoResult
+                isLoading={false}
+                desc="Could not load voting settings. Please try again."
+                buttonText="Retry"
+                onClick={() => refetch()}
+            />
+        )
+    }
+
+    if (!form) return <NoResult isLoading desc="Loading voting settings…" />
 
     const period = form.freeVotePeriod ?? { mode: 'event' as const }
 
