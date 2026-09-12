@@ -197,6 +197,16 @@ export const apiGetVotePackages = (
     return NoAuthService.get(url)
 }
 
+/**
+ * GET /v2/vote/:id/share — ready-made per-contestant voting links.
+ * Owner-or-admin gated (unlike apiGetContestants above, which any
+ * authenticated user can read to vote) — needs the event owner's token.
+ */
+export const apiGetContestantShareLinks = (
+    token: string,
+    { id }: { id: string },
+) => BaseService.get(`v2/vote/${id}/share`, Auth(token))
+
 /** POST /v2/vote/packages — Create a vote package (event owner) */
 export const apiCreateVotePackage = (
     data: ICreateVotePackage,
