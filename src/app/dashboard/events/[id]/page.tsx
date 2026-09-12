@@ -19,15 +19,17 @@ import {
     apiGetVoteTrend,
     apiGetWhoVoted,
 } from '@/services/AuthService'
+import { apiGetContestantShareLinks } from '@/services/EventService'
 import {
     IEventSummary, ISalesTrend,
     IAudienceInsights, IHealthScore, IVoteTrend,
-    IWhoVotedResponse,
+    IWhoVotedResponse, IContestantShareLinksResponse,
 } from '@/interfaces'
 import { formatNaira, timeAgo } from '@/lib/utils'
 import { ROUTES } from '@/constants/routes'
-import { MdArrowBack, MdOutlineFileDownload } from 'react-icons/md'
+import { MdArrowBack, MdOutlineFileDownload, MdContentCopy } from 'react-icons/md'
 import { BsCircleFill } from 'react-icons/bs'
+import useCopyToClipboard from '@/hooks/useCopy'
 import {
     BarChart, Bar, LineChart, Line, XAxis, YAxis,
     Tooltip, ResponsiveContainer, CartesianGrid, Legend,
@@ -354,7 +356,20 @@ const TicketsTab = ({ event, id }: { event: IEventSummary; id: string }) => {
 }
 
 // ── Contestants Tab (VOTING) ──────────────────────────────────────────────────
-const ContestantsTab = ({ event }: { event: IEventSummary }) => {
+const ContestantsTab = ({ event, id }: { event: IEventSummary; id: string }) => {
+    // Ready-made share links, keyed by contestant _id — GET /v2/vote/:id/share,
+    // owner-or-admin gated (event_control.js's getContestantShareLinks). The
+    // summary endpoint above doesn't carry my_code/slug, so this is a second
+    // small fetch rather than duplicating that slugify logic here too.
+    const { data: shareData } = useFetch<IContestantShareLinksResponse>({
+        api: apiGetContestantShareLinks,
+        key: ['CONTESTANT_SHARE_LINKS', id],
+        param: { id },
+        enabled: !!event.voting,
+    })
+    const votingLinkById = new Map((shareData?.contestants ?? []).map((c) => [c._id, c.votingLink]))
+    const { copy } = useCopyToClipboard()
+
     if (!event.voting) return <p className="text-sm" style={{ color: TEXT_LIGHT }}>No voting data.</p>
 
     const { leaderboard, totalVotes, estimatedRevenue, contestantCount, costPerVote } = event.voting
@@ -402,7 +417,21 @@ const ContestantsTab = ({ event }: { event: IEventSummary }) => {
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between mb-1">
                                     <p className="text-sm font-bold truncate">{c.fullname}</p>
-                                    <span className="text-sm font-black ml-2 shrink-0">{c.vote_count.toLocaleString()}</span>
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                        <span className="text-sm font-black">{c.vote_count.toLocaleString()}</span>
+                                        <button
+                                            onClick={() => {
+                                                const link = votingLinkById.get(c._id)
+                                                if (link) copy(link)
+                                            }}
+                                            disabled={!votingLinkById.get(c._id)}
+                                            title="Copy voting link"
+                                            className="p-1.5 rounded-lg transition disabled:opacity-40"
+                                            style={{ color: GREEN, background: 'rgba(45,140,62,.1)' }}
+                                        >
+                                            <MdContentCopy className="text-sm" />
+                                        </button>
+                                    </div>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <div className="flex-1 h-2.5 rounded-full overflow-hidden" style={{ backgroundColor: BORDER }}>
@@ -416,6 +445,11 @@ const ContestantsTab = ({ event }: { event: IEventSummary }) => {
                                     </div>
                                     <span className="text-xs font-semibold w-8" style={{ color: TEXT_LIGHT }}>{c.pct}%</span>
                                 </div>
+                                {costPerVote > 0 && (
+                                    <p className="text-xs mt-1" style={{ color: TEXT_LIGHT }}>
+                                        Revenue: <span style={{ color: GREEN, fontWeight: 600 }}>{formatNaira(c.vote_count * costPerVote)}</span>
+                                    </p>
+                                )}
                             </div>
                         </div>
                     ))}
@@ -927,7 +961,7 @@ const EventWorkspace = () => {
                 {activeTab === 'checkin'     && <CheckinTab      eventId={id} />}
                 {activeTab === 'audience'    && <AudienceTab     id={id} />}
                 {activeTab === 'insights'    && <InsightsTab     id={id} />}
-                {activeTab === 'contestants' && <ContestantsTab  event={event} />}
+                {activeTab === 'contestants' && <ContestantsTab  event={event} id={id} />}
                 {activeTab === 'votes'       && <VotesTab        event={event} id={id} />}
                 {activeTab === 'submissions' && <SubmissionsTab  event={event} />}
                 {activeTab === 'finance'     && <FinanceTab      event={event} />}
