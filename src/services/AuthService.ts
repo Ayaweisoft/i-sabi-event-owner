@@ -41,6 +41,9 @@ export const apiGetNotifications = (token: string, { type, page, limit }: { type
         params: { type: type || 'all', page: page || 1, limit: limit || 30 },
     })
 
+export const apiGetReconciliationProgress = (token: string) =>
+    BaseService.get(`v2/event-owner/reconciliation/summary`, Auth(token))
+
 export const apiGetEventSummary = (token: string, { id }: { id: string }) =>
     BaseService.get(`v2/event-owner/event/${id}/summary`, Auth(token))
 
@@ -58,6 +61,12 @@ export const apiGetCheckinTrend = (token: string, { id, period }: { id: string; 
 
 export const apiGetAudienceInsights = (token: string, { id }: { id: string }) =>
     BaseService.get(`v2/event-owner/event/${id}/audience`, Auth(token))
+
+export const apiExportAudienceCSV = (token: string, { id }: { id: string }) =>
+    BaseService.get(`v2/event-owner/event/${id}/audience/export`, {
+        ...Auth(token),
+        responseType: 'blob',
+    })
 
 export const apiGetHealthScore = (token: string, { id }: { id: string }) =>
     BaseService.get(`v2/event-owner/event/${id}/health-score`, Auth(token))

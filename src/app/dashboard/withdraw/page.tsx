@@ -82,7 +82,7 @@ const Withdraw = () => {
 
     const handleSelectBank = (val: string) => {
         dispatch({ type: "bank_code", payload: val })
-        const bank_name = banks?.banks?.details?.message?.find(bank => bank.bankCode === val)?.bankName
+        const bank_name = banks?.banks?.find(bank => bank.bankCode === val)?.bankName
         dispatch({ type: "bank_name", payload: bank_name || "" })
     }
  
@@ -112,7 +112,7 @@ const Withdraw = () => {
                     <select value={addBank.bank_code} onChange={(e) => handleSelectBank(e.target.value)} name="" id="" className="p-4 text-sm bg-transparent border rounded-md">
                         <option value="">Select Bank</option>
                         {
-                            banks?.banks?.details?.message?.map((bank) => (
+                            banks?.banks?.map((bank) => (
                                 <option key={`${bank.bankCode}_${bank.bankName}`} value={bank.bankCode}>{bank.bankName}</option>
                             ))
                         }
