@@ -8,7 +8,7 @@ import {
     ISubmitTicketType,
     ICreateContestant,
 } from '@/interfaces'
-import type { ICreateVotePackage, IUpdateVotePackage } from '@/interfaces'
+import type { ICreateVotePackage, IUpdateVotePackage, IUpdateVotingSettings } from '@/interfaces'
 import type {
     IForm,
     IFormsListResponse,
@@ -206,6 +206,18 @@ export const apiGetContestantShareLinks = (
     token: string,
     { id }: { id: string },
 ) => BaseService.get(`v2/vote/${id}/share`, Auth(token))
+
+/** GET /v2/vote/:id/settings — vote-count visibility + free-vote config. Owner-or-admin. */
+export const apiGetVotingSettings = (
+    token: string,
+    { id }: { id: string },
+) => BaseService.get(`v2/vote/${id}/settings`, Auth(token))
+
+/** PATCH /v2/vote/:id/settings */
+export const apiUpdateVotingSettings = (
+    data: IUpdateVotingSettings,
+    { id, token }: { id: string; token: string },
+) => BaseService.patch(`v2/vote/${id}/settings`, data, Auth(token))
 
 /** POST /v2/vote/packages — Create a vote package (event owner) */
 export const apiCreateVotePackage = (

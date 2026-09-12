@@ -1,9 +1,10 @@
 "use client"
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useParams } from 'next/navigation'
 import useFetch from '@/hooks/useFetch'
+import useMutate from '@/hooks/useMutate'
 import useAuthStore from '@/hooks/useAuth'
 import { toast } from 'react-toastify'
 import NoResult from '@/components/NoResult'
@@ -19,11 +20,16 @@ import {
     apiGetVoteTrend,
     apiGetWhoVoted,
 } from '@/services/AuthService'
-import { apiGetContestantShareLinks } from '@/services/EventService'
+import {
+    apiGetContestantShareLinks,
+    apiGetVotingSettings,
+    apiUpdateVotingSettings,
+} from '@/services/EventService'
 import {
     IEventSummary, ISalesTrend,
     IAudienceInsights, IHealthScore, IVoteTrend,
     IWhoVotedResponse, IContestantShareLinksResponse,
+    IVotingSettings, IUpdateVotingSettings,
 } from '@/interfaces'
 import { formatNaira, timeAgo } from '@/lib/utils'
 import { ROUTES } from '@/constants/routes'
@@ -62,12 +68,12 @@ const Card = ({ children, className = '' }: { children: React.ReactNode; classNa
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
 type TicketingTab  = 'overview' | 'tickets' | 'checkin' | 'audience' | 'insights' | 'finance'
-type VotingTab     = 'overview' | 'contestants' | 'votes' | 'checkin' | 'finance'
+type VotingTab     = 'overview' | 'contestants' | 'votes' | 'checkin' | 'finance' | 'settings'
 type FormTab       = 'overview' | 'submissions' | 'finance'
 type TabId = TicketingTab | VotingTab | FormTab
 
 const TICKETING_TABS  = ['overview','tickets','checkin','audience','insights','finance'] as const
-const VOTING_TABS     = ['overview','contestants','votes','checkin','finance'] as const
+const VOTING_TABS     = ['overview','contestants','votes','checkin','finance','settings'] as const
 const FORM_TABS       = ['overview','submissions','finance'] as const
 
 const TAB_LABELS: Record<string, string> = {
@@ -79,6 +85,7 @@ const TAB_LABELS: Record<string, string> = {
     finance:      'Finance',
     contestants:  'Contestants',
     votes:        'Votes',
+    settings:     'Settings',
     submissions:  'Submissions',
 }
 
@@ -460,17 +467,25 @@ const ContestantsTab = ({ event, id }: { event: IEventSummary; id: string }) => 
 }
 
 // ── Votes Tab (VOTING) ────────────────────────────────────────────────────────
+const PERIODS = ['daily', 'weekly', 'monthly'] as const
+
 const VotesTab = ({ event, id }: { event: IEventSummary; id: string }) => {
+    const [period, setPeriod] = useState<typeof PERIODS[number]>('daily')
+    // undefined = event-wide activity log; a contestant _id narrows it to
+    // that contestant's voters (who-voted-for-me.js already supports this
+    // via ?contestantId=, it just wasn't wired up from here before).
+    const [selectedContestant, setSelectedContestant] = useState<string | undefined>(undefined)
+
     const { data: trend, isLoading: trendLoading } = useFetch<IVoteTrend>({
         api: apiGetVoteTrend,
-        key: ['VOTE_TREND', id],
-        param: { id, period: 'daily' },
+        key: ['VOTE_TREND', id, period],
+        param: { id, period },
     })
 
-    const { data: whoVoted } = useFetch<IWhoVotedResponse>({
+    const { data: whoVoted, isLoading: whoVotedLoading } = useFetch<IWhoVotedResponse>({
         api: apiGetWhoVoted,
-        key: ['WHO_VOTED', id],
-        param: { id },
+        key: ['WHO_VOTED', id, selectedContestant ?? 'all'],
+        param: { id, contestantId: selectedContestant },
     })
 
     const chartData = (trend?.labels || []).map((label, li) => {
@@ -479,7 +494,18 @@ const VotesTab = ({ event, id }: { event: IEventSummary; id: string }) => {
         return point
     })
 
+    // Overall votes + revenue traction — separate from the per-contestant
+    // breakdown above, so "how is this event doing overall" doesn't require
+    // mentally summing every contestant's line.
+    const totalsChartData = (trend?.labels || []).map((label, li) => ({
+        label,
+        votes:   trend?.totals?.votes?.[li]   || 0,
+        revenue: trend?.totals?.revenue?.[li] || 0,
+    }))
+
     const voteLog = whoVoted?.voters || whoVoted?.votes || whoVoted?.data || []
+    const contestants = event.voting?.leaderboard || []
+    const selectedContestantName = contestants.find((c) => c._id === selectedContestant)?.fullname
 
     return (
         <div className="flex flex-col gap-4">
@@ -490,16 +516,90 @@ const VotesTab = ({ event, id }: { event: IEventSummary; id: string }) => {
                         <p className="text-2xl font-bold mt-1">{event.voting.totalVotes.toLocaleString()}</p>
                     </Card>
                     <Card>
-                        <p className="text-xs font-semibold uppercase" style={{ color: TEXT_LIGHT }}>Revenue</p>
+                        <p className="text-xs font-semibold uppercase" style={{ color: TEXT_LIGHT }}>Gross Revenue</p>
                         <p className="text-2xl font-bold mt-1" style={{ color: GREEN }}>{formatNaira(event.voting.estimatedRevenue)}</p>
                     </Card>
                 </div>
             )}
 
-            {/* Vote trend chart */}
-            {chartData.length > 0 ? (
+            {/* All contestants — every one, not a top-5 preview, each with a
+                direct way to see who voted for them specifically. */}
+            <Card>
+                <SectionHeader title={`All Contestants · ${contestants.length}`} />
+                <div className="flex flex-col divide-y" style={{ borderColor: BORDER }}>
+                    {contestants.map((c) => (
+                        <div key={c._id} className="flex items-center justify-between py-2.5 gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                                {c.image_url && (
+                                    <Image src={c.image_url} width={32} height={32} alt={c.fullname}
+                                        className="rounded-full object-cover w-8 h-8 border" style={{ borderColor: BORDER }} />
+                                )}
+                                <div className="min-w-0">
+                                    <p className="text-sm font-semibold truncate">{c.fullname}</p>
+                                    <p className="text-xs" style={{ color: TEXT_LIGHT }}>{c.vote_count.toLocaleString()} votes · {c.pct}%</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setSelectedContestant((prev) => (prev === c._id ? undefined : c._id))}
+                                className="text-xs font-semibold px-2.5 py-1.5 rounded-lg shrink-0 transition"
+                                style={{
+                                    color:      selectedContestant === c._id ? '#fff' : GREEN,
+                                    background: selectedContestant === c._id ? GREEN  : 'rgba(45,140,62,.1)',
+                                }}
+                            >
+                                {selectedContestant === c._id ? 'Showing voters' : 'See who voted'}
+                            </button>
+                        </div>
+                    ))}
+                    {contestants.length === 0 && (
+                        <p className="text-sm py-2" style={{ color: TEXT_LIGHT }}>No contestants yet.</p>
+                    )}
+                </div>
+            </Card>
+
+            {/* Period toggle for both trend charts below */}
+            <div className="flex gap-1.5">
+                {PERIODS.map((p) => (
+                    <button
+                        key={p}
+                        onClick={() => setPeriod(p)}
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition"
+                        style={{
+                            color:      period === p ? '#fff' : TEXT_LIGHT,
+                            background: period === p ? GREEN  : SURFACE,
+                            border: `1px solid ${period === p ? GREEN : BORDER}`,
+                        }}
+                    >
+                        {p}
+                    </button>
+                ))}
+            </div>
+
+            {/* Overall progress — votes + revenue over time, event-wide */}
+            {totalsChartData.length > 0 ? (
                 <Card>
-                    <SectionHeader title="Votes Over Time" />
+                    <SectionHeader title="Progress — Votes & Revenue" />
+                    <ResponsiveContainer width="100%" height={200}>
+                        <LineChart data={totalsChartData} margin={{ top: 0, right: 8, left: -20, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={BORDER} />
+                            <XAxis dataKey="label" tick={{ fontSize: 10, fill: TEXT_LIGHT }} />
+                            <YAxis yAxisId="votes" tick={{ fontSize: 10, fill: TEXT_LIGHT }} />
+                            <YAxis yAxisId="revenue" orientation="right" tick={{ fontSize: 10, fill: TEXT_LIGHT }} />
+                            <Tooltip formatter={(value, name) => name === 'revenue' ? formatNaira(Number(value) || 0) : value} />
+                            <Legend />
+                            <Line yAxisId="votes"   type="monotone" dataKey="votes"   name="Votes"   stroke={GREEN} strokeWidth={2.5} dot={false} />
+                            <Line yAxisId="revenue" type="monotone" dataKey="revenue" name="Revenue" stroke={GOLD}  strokeWidth={2.5} dot={false} />
+                        </LineChart>
+                    </ResponsiveContainer>
+                </Card>
+            ) : (
+                !trendLoading && <p className="text-sm" style={{ color: TEXT_LIGHT }}>No {period} trend data yet.</p>
+            )}
+
+            {/* Per-contestant vote trend chart */}
+            {chartData.length > 0 && (
+                <Card>
+                    <SectionHeader title="Votes Over Time — Per Contestant" />
                     <ResponsiveContainer width="100%" height={200}>
                         <LineChart data={chartData} margin={{ top: 0, right: 8, left: -20, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={BORDER} />
@@ -520,21 +620,36 @@ const VotesTab = ({ event, id }: { event: IEventSummary; id: string }) => {
                         </LineChart>
                     </ResponsiveContainer>
                 </Card>
-            ) : (
-                !trendLoading && <p className="text-sm" style={{ color: TEXT_LIGHT }}>No vote trend data yet.</p>
             )}
 
-            {/* Vote activity log */}
-            {voteLog.length > 0 && (
+            {/* Vote activity log — event-wide, or narrowed to one contestant */}
+            {(voteLog.length > 0 || whoVotedLoading || selectedContestant) && (
                 <Card>
                     <SectionHeader
-                        title="Vote Activity"
+                        title={selectedContestantName ? `Who Voted — ${selectedContestantName}` : 'Vote Activity'}
                         action={
-                            <button className="text-xs font-semibold flex items-center gap-1" style={{ color: GREEN }}>
-                                <MdOutlineFileDownload className="text-base" /> Export
-                            </button>
+                            <div className="flex items-center gap-2">
+                                {selectedContestant && (
+                                    <button
+                                        onClick={() => setSelectedContestant(undefined)}
+                                        className="text-xs font-semibold"
+                                        style={{ color: TEXT_LIGHT }}
+                                    >
+                                        Clear
+                                    </button>
+                                )}
+                                <button className="text-xs font-semibold flex items-center gap-1" style={{ color: GREEN }}>
+                                    <MdOutlineFileDownload className="text-base" /> Export
+                                </button>
+                            </div>
                         }
                     />
+                    {whoVotedLoading && <p className="text-sm py-2" style={{ color: TEXT_LIGHT }}>Loading…</p>}
+                    {!whoVotedLoading && voteLog.length === 0 && (
+                        <p className="text-sm py-2" style={{ color: TEXT_LIGHT }}>
+                            {selectedContestantName ? `No votes for ${selectedContestantName} yet.` : 'No votes yet.'}
+                        </p>
+                    )}
                     <div className="flex flex-col divide-y" style={{ borderColor: BORDER }}>
                         {voteLog.slice(0, 20).map((v, i) => {
                             const voterName  = v.fullname || v.contestant?.fullname || 'Voter'
@@ -846,7 +961,9 @@ const FinanceTab = ({ event }: { event: IEventSummary }) => {
     else if (event.type === 'VOTING' && event.voting)     gross = event.voting.estimatedRevenue
     else if (event.type === 'FORM-SALES' && event.forms)  gross = event.forms.revenue
 
-    const platformCutPct  = event.type === 'TICKETING' ? (event.tickets?.platformFeePercentage ?? 0) : 0
+    const platformCutPct  =
+        event.type === 'TICKETING' ? (event.tickets?.platformFeePercentage ?? 0) :
+        event.type === 'VOTING'    ? (event.voting?.platformFeePercentage ?? 0)  : 0
     const platformCut     = Math.round(gross * (platformCutPct / 100))
     const yourEarnings    = gross - platformCut
 
@@ -880,6 +997,183 @@ const FinanceTab = ({ event }: { event: IEventSummary }) => {
                     </Link>.
                 </p>
             </Card>
+        </div>
+    )
+}
+
+// ── Toggle switch (no shared component for this in the design system yet) ─────
+const Toggle = ({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) => (
+    <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        className="relative w-11 h-6 rounded-full transition shrink-0"
+        style={{ backgroundColor: checked ? GREEN : BORDER }}
+    >
+        <span
+            className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform"
+            style={{ transform: checked ? 'translateX(20px)' : 'translateX(0)' }}
+        />
+    </button>
+)
+
+const toDateInputValue = (d?: string) => (d ? d.slice(0, 10) : '')
+
+// ── Settings Tab (VOTING) ───────────────────────────────────────────────────────
+const SettingsTab = ({ event, id }: { event: IEventSummary; id: string }) => {
+    const { data: settings, isLoading } = useFetch<IVotingSettings>({
+        api: apiGetVotingSettings,
+        key: ['VOTING_SETTINGS', id],
+        param: { id },
+    })
+
+    const [form, setForm] = useState<IUpdateVotingSettings | null>(null)
+
+    // Seed the editable form once the real settings load — a ref-less "only
+    // once" sync, since after that the form is the user's own edits, not a
+    // mirror of the server (refetching after save would otherwise stomp
+    // in-progress changes).
+    useEffect(() => {
+        if (settings && !form) setForm(settings)
+    }, [settings, form])
+
+    const updateMutation = useMutate<IUpdateVotingSettings, unknown>(apiUpdateVotingSettings, {
+        onSuccess: () => toast.success('Voting settings updated'),
+        showErrorMessage: true,
+    })
+
+    if (isLoading || !form) return <NoResult isLoading desc="Loading voting settings…" />
+
+    const period = form.freeVotePeriod ?? { mode: 'event' as const }
+
+    const save = () => {
+        if ((form.freeVotesPerDay ?? 0) < 0) {
+            toast.error('Free votes per day cannot be negative')
+            return
+        }
+        if (
+            period.mode === 'custom' &&
+            period.startDate && period.endDate &&
+            new Date(period.endDate) <= new Date(period.startDate)
+        ) {
+            toast.error('End date must be after start date')
+            return
+        }
+        updateMutation.mutate(form, { id } as Parameters<typeof updateMutation.mutate>[1])
+    }
+
+    return (
+        <div className="flex flex-col gap-4">
+            <Card>
+                <SectionHeader title="Vote Count Visibility" />
+                <div className="flex items-center justify-between gap-3 py-1">
+                    <div>
+                        <p className="text-sm font-semibold">Show vote counts publicly</p>
+                        <p className="text-xs mt-0.5" style={{ color: TEXT_LIGHT }}>
+                            When off, voters can&apos;t see how many votes each contestant has, their
+                            percentage, or their rank — nothing that reveals who&apos;s winning. This
+                            dashboard always shows you the real numbers either way.
+                        </p>
+                    </div>
+                    <Toggle
+                        checked={form.showVoteCount ?? true}
+                        onChange={(v) => setForm((p) => ({ ...p, showVoteCount: v }))}
+                    />
+                </div>
+            </Card>
+
+            <Card>
+                <SectionHeader title="Free Votes" />
+                <div className="flex items-center justify-between gap-3 py-1">
+                    <div>
+                        <p className="text-sm font-semibold">Enable free votes</p>
+                        <p className="text-xs mt-0.5" style={{ color: TEXT_LIGHT }}>
+                            Give every voter a set number of free votes per day, on top of paid votes.
+                        </p>
+                    </div>
+                    <Toggle
+                        checked={form.freeVotesEnabled ?? false}
+                        onChange={(v) => setForm((p) => ({ ...p, freeVotesEnabled: v }))}
+                    />
+                </div>
+
+                {form.freeVotesEnabled && (
+                    <div className="flex flex-col gap-3 mt-3 pt-3" style={{ borderTop: `1px solid ${BORDER}` }}>
+                        <div>
+                            <label className="text-xs font-medium mb-1 block" style={{ color: GREEN_DEEP }}>
+                                Free votes per day
+                            </label>
+                            <input
+                                type="number" min={0}
+                                value={form.freeVotesPerDay ?? 0}
+                                onChange={(e) => setForm((p) => ({ ...p, freeVotesPerDay: Math.max(0, Number(e.target.value)) }))}
+                                className="w-full px-3 py-2 text-sm rounded-lg outline-none"
+                                style={{ border: `1px solid ${BORDER}`, backgroundColor: '#fff' }}
+                            />
+                        </div>
+
+                        <div>
+                            <label className="text-xs font-medium mb-1 block" style={{ color: GREEN_DEEP }}>Period</label>
+                            <div className="flex gap-2">
+                                {(['event', 'custom'] as const).map((mode) => (
+                                    <button
+                                        key={mode}
+                                        onClick={() => setForm((p) => ({ ...p, freeVotePeriod: { ...period, mode } }))}
+                                        className="flex-1 py-2 rounded-lg text-xs font-semibold transition"
+                                        style={{
+                                            color:      period.mode === mode ? '#fff' : TEXT_LIGHT,
+                                            background: period.mode === mode ? GREEN  : SURFACE,
+                                            border: `1px solid ${period.mode === mode ? GREEN : BORDER}`,
+                                        }}
+                                    >
+                                        {mode === 'event' ? 'Event dates' : 'Custom dates'}
+                                    </button>
+                                ))}
+                            </div>
+                            <p className="text-xs mt-1" style={{ color: TEXT_LIGHT }}>
+                                {period.mode === 'event'
+                                    ? `Free votes run for the whole event${event.startDate ? ` (from ${new Date(event.startDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })})` : ''}.`
+                                    : 'Set a specific window — doesn\'t have to match the event\'s own dates.'}
+                            </p>
+                        </div>
+
+                        {period.mode === 'custom' && (
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="text-xs font-medium mb-1 block" style={{ color: GREEN_DEEP }}>Start date</label>
+                                    <input
+                                        type="date"
+                                        value={toDateInputValue(period.startDate)}
+                                        onChange={(e) => setForm((p) => ({ ...p, freeVotePeriod: { ...period, startDate: e.target.value } }))}
+                                        className="w-full px-3 py-2 text-sm rounded-lg outline-none"
+                                        style={{ border: `1px solid ${BORDER}`, backgroundColor: '#fff' }}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-medium mb-1 block" style={{ color: GREEN_DEEP }}>End date</label>
+                                    <input
+                                        type="date"
+                                        value={toDateInputValue(period.endDate)}
+                                        onChange={(e) => setForm((p) => ({ ...p, freeVotePeriod: { ...period, endDate: e.target.value } }))}
+                                        className="w-full px-3 py-2 text-sm rounded-lg outline-none"
+                                        style={{ border: `1px solid ${BORDER}`, backgroundColor: '#fff' }}
+                                    />
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </Card>
+
+            <button
+                onClick={save}
+                disabled={updateMutation.isPending}
+                className="py-2.5 rounded-lg text-sm font-bold text-white disabled:opacity-60"
+                style={{ backgroundColor: GREEN }}
+            >
+                {updateMutation.isPending ? 'Saving…' : 'Save Voting Settings'}
+            </button>
         </div>
     )
 }
@@ -965,6 +1259,7 @@ const EventWorkspace = () => {
                 {activeTab === 'votes'       && <VotesTab        event={event} id={id} />}
                 {activeTab === 'submissions' && <SubmissionsTab  event={event} />}
                 {activeTab === 'finance'     && <FinanceTab      event={event} />}
+                {activeTab === 'settings'    && <SettingsTab     event={event} id={id} />}
             </div>
         </div>
     )

@@ -104,8 +104,12 @@ export const apiDeleteCheckinPin = (token: string, { eventId, pin }: { eventId: 
     BaseService.delete(`v2/checkin/${eventId}/pins/${pin}`, Auth(token))
 
 // NOTE: baseURL already contains /api — do NOT add api/ prefix here
-export const apiGetWhoVoted = (token: string, { id }: { id: string }) =>
-    BaseService.get(`who-voted-for-me/${id}`, Auth(token))
+// contestantId narrows to that contestant's voters; omit for the full event.
+export const apiGetWhoVoted = (token: string, { id, contestantId }: { id: string; contestantId?: string }) =>
+    BaseService.get(`who-voted-for-me/${id}`, {
+        ...Auth(token),
+        params: contestantId ? { contestantId } : undefined,
+    })
 
 // ── Submission endpoints ───────────────────────────────────────────────────────
 
