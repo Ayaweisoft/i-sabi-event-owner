@@ -1,8 +1,9 @@
 "use client"
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import Image from 'next/image'
 import { toast } from 'react-toastify'
-import { MdAdd, MdEdit, MdDeleteOutline, MdClose } from 'react-icons/md'
+import { MdAdd, MdEdit, MdDeleteOutline, MdClose, MdCloudUpload, MdImage } from 'react-icons/md'
 import useFetch from '@/hooks/useFetch'
 import useAuthStore from '@/hooks/useAuth'
 import { apiGetEvents } from '@/services/AuthService'
@@ -10,6 +11,7 @@ import {
     apiCreateEventGroup, apiGetMyEventGroups, apiUpdateEventGroup, apiDeleteEventGroup,
 } from '@/services/EventService'
 import { IEventResponse, IEventGroupsResponse, IEventGroup, ICreateEventGroup } from '@/interfaces'
+import { uploadImageToCloudinary } from '@/lib/cloudinaryUpload'
 import { Card, SectionTitle, formatGroupDate } from './shared'
 
 const GREEN      = '#2d8c3e'
@@ -53,6 +55,8 @@ const GroupsClient = () => {
     const [editingId, setEditingId] = useState<string | null>(null) // null = closed, 'new' = creating, else = editing that group's _id
     const [form, setForm] = useState<ICreateEventGroup>(emptyForm)
     const [busy, setBusy] = useState(false)
+    const [uploading, setUploading] = useState(false)
+    const fileInputRef = useRef<HTMLInputElement>(null)
 
     const startCreate = () => { setForm(emptyForm); setEditingId('new') }
     const startEdit = (group: IEventGroup) => {
@@ -60,6 +64,20 @@ const GroupsClient = () => {
         setEditingId(group._id)
     }
     const cancel = () => { setEditingId(null); setForm(emptyForm) }
+
+    const handleImagePick = async (file: File | undefined) => {
+        if (!file) return
+        setUploading(true)
+        try {
+            const url = await uploadImageToCloudinary(file)
+            setForm((p) => ({ ...p, image_url: url }))
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Image upload failed')
+        } finally {
+            setUploading(false)
+            if (fileInputRef.current) fileInputRef.current.value = ''
+        }
+    }
 
     const toggleEvent = (id: string) => {
         setForm((p) => ({
@@ -158,14 +176,51 @@ const GroupsClient = () => {
                             />
                         </div>
                         <div>
-                            <label className="text-xs font-medium mb-1 block" style={{ color: GREEN_DEEP }}>Cover image URL (optional)</label>
+                            <label className="text-xs font-medium mb-1 block" style={{ color: GREEN_DEEP }}>Cover image (optional)</label>
                             <input
-                                value={form.image_url}
-                                onChange={(e) => setForm((p) => ({ ...p, image_url: e.target.value }))}
-                                placeholder="https://…"
-                                className="w-full px-3 py-2 text-sm rounded-lg outline-none"
-                                style={{ border: `1px solid ${BORDER}` }}
+                                ref={fileInputRef}
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => handleImagePick(e.target.files?.[0])}
                             />
+                            <div className="flex items-center gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    disabled={uploading}
+                                    className="relative w-20 h-20 rounded-xl overflow-hidden shrink-0 flex items-center justify-center disabled:opacity-60"
+                                    style={{ border: `1.5px dashed ${BORDER}`, background: '#f4f8f4' }}
+                                >
+                                    {form.image_url ? (
+                                        <Image src={form.image_url} alt="Cover" fill className="object-cover" unoptimized />
+                                    ) : (
+                                        <MdImage className="text-2xl" style={{ color: TEXT_LIGHT }} />
+                                    )}
+                                </button>
+                                <div className="flex flex-col gap-1">
+                                    <button
+                                        type="button"
+                                        onClick={() => fileInputRef.current?.click()}
+                                        disabled={uploading}
+                                        className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg disabled:opacity-60"
+                                        style={{ color: GREEN, background: 'rgba(45,140,62,.1)' }}
+                                    >
+                                        <MdCloudUpload className="text-sm" />
+                                        {uploading ? 'Uploading…' : form.image_url ? 'Replace image' : 'Upload image'}
+                                    </button>
+                                    {form.image_url && !uploading && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setForm((p) => ({ ...p, image_url: '' }))}
+                                            className="text-xs font-medium text-left"
+                                            style={{ color: TEXT_LIGHT }}
+                                        >
+                                            Remove
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
                         </div>
                         <div>
                             <label className="text-xs font-medium mb-1 block" style={{ color: GREEN_DEEP }}>
@@ -190,7 +245,7 @@ const GroupsClient = () => {
                         </div>
                         <button
                             onClick={save}
-                            disabled={busy}
+                            disabled={busy || uploading}
                             className="mt-1 py-2.5 rounded-lg text-sm font-bold text-white disabled:opacity-60"
                             style={{ background: GREEN }}
                         >
@@ -214,11 +269,23 @@ const GroupsClient = () => {
                     <Card key={group._id} className="overflow-hidden">
                         <div className="p-5">
                             <div className="flex items-start justify-between gap-3">
-                                <div className="min-w-0">
-                                    <h3 className="text-lg font-semibold text-slate-900 truncate">{group.name}</h3>
-                                    <p className="text-xs mt-0.5" style={{ color: TEXT_LIGHT }}>
-                                        Slug: <span className="font-mono">{group.slug}</span> · Created {formatGroupDate(group.createdAt)}
-                                    </p>
+                                <div className="flex items-start gap-3 min-w-0">
+                                    <div
+                                        className="relative w-12 h-12 rounded-xl overflow-hidden shrink-0 flex items-center justify-center"
+                                        style={{ background: '#f4f8f4', border: `1px solid ${BORDER}` }}
+                                    >
+                                        {group.image_url ? (
+                                            <Image src={group.image_url} alt={group.name} fill className="object-cover" unoptimized />
+                                        ) : (
+                                            <MdImage className="text-lg" style={{ color: TEXT_LIGHT }} />
+                                        )}
+                                    </div>
+                                    <div className="min-w-0">
+                                        <h3 className="text-lg font-semibold text-slate-900 truncate">{group.name}</h3>
+                                        <p className="text-xs mt-0.5" style={{ color: TEXT_LIGHT }}>
+                                            Slug: <span className="font-mono">{group.slug}</span> · Created {formatGroupDate(group.createdAt)}
+                                        </p>
+                                    </div>
                                 </div>
                                 <div className="flex items-center gap-1 shrink-0">
                                     <button onClick={() => startEdit(group)} title="Edit" className="p-2 rounded-lg" style={{ color: TEXT_LIGHT, background: '#f4f8f4' }}>
