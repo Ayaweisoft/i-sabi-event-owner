@@ -9,6 +9,14 @@ import {
     ICreateContestant,
 } from '@/interfaces'
 import type { ICreateVotePackage, IUpdateVotePackage } from '@/interfaces'
+import type {
+    IForm,
+    IFormsListResponse,
+    IFormShareInfo,
+    IFormSubmissionsResponse,
+    ICreateFormPayload,
+    IUpdateFormPayload,
+} from '@/interfaces/forms'
 
 const Auth = (token: string) => ({
     headers: { Authorization: `Bearer ${token}` },
@@ -112,29 +120,57 @@ export const apiGetVoteRecords = (
 
 // ── Forms ─────────────────────────────────────────────────────────────────────
 
+/** GET /forms/owner/:ownerId — All forms owned by this event owner, paginated */
+export const apiGetFormsByOwner = (
+    token: string,
+    { id, params }: { id: string; params?: { page?: number; limit?: number } },
+) => BaseService.get<IFormsListResponse>(`forms/owner/${id}`, { ...Auth(token), params })
+
 /** GET /forms/event/:eventId — Form for a specific event */
 export const apiGetFormByEvent = (
     token: string,
     { id }: { id: string },
-) => BaseService.get(`forms/event/${id}`, Auth(token))
+) => BaseService.get<IForm>(`forms/event/${id}`, Auth(token))
 
-/** GET /forms/:formId/submissions — All submissions (owner only) */
-export const apiGetFormSubmissions = (
+/** GET /forms/:formId — Single form by id */
+export const apiGetFormById = (
     token: string,
     { id }: { id: string },
-) => BaseService.get(`forms/${id}/submissions`, Auth(token))
+) => BaseService.get<IForm>(`forms/${id}`, Auth(token))
 
-/** POST /forms — Create form */
+/** GET /forms/:formId/submissions — All submissions (owner only), paginated */
+export const apiGetFormSubmissions = (
+    token: string,
+    { id, params }: { id: string; params?: { page?: number; limit?: number } },
+) => BaseService.get<IFormSubmissionsResponse>(`forms/${id}/submissions`, { ...Auth(token), params })
+
+/** POST /forms — Create form (ownerId is taken from the auth token, not the body) */
 export const apiCreateForm = (
-    data: unknown,
+    data: ICreateFormPayload,
     { token }: { id: string; token: string },
-) => BaseService.post('forms', data, Auth(token))
+) => BaseService.post<IForm>('forms', data, Auth(token))
 
 /** PUT /forms/:formId — Update form, id = formId */
 export const apiUpdateForm = (
-    data: unknown,
+    data: IUpdateFormPayload,
     { id, token }: { id: string; token: string },
-) => BaseService.put(`forms/${id}`, data, Auth(token))
+) => BaseService.put<IForm>(`forms/${id}`, data, Auth(token))
+
+/**
+ * GET /forms/:formId/share — owner-only. Returns the public share links:
+ *   { formId, slug, links: { direct, embed, iframe } }
+ * `direct`/`embed` are root-domain URLs (i-sabi.com.ng/forms/:slug[/embed]),
+ * not under /api — always display these rather than building a link locally.
+ */
+export const apiGetFormShareInfo = (
+    token: string,
+    { id }: { id: string },
+) => BaseService.get<IFormShareInfo>(`forms/${id}/share`, Auth(token))
+
+/** GET /forms/slug/:slug — public, no auth. Form lookup by its share-link slug. */
+export const apiGetFormBySlug = (
+    { slug }: { slug: string },
+) => BaseService.get<IForm>(`forms/slug/${slug}`)
 
 // ── Finance ───────────────────────────────────────────────────────────────────
 

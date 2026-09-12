@@ -37,6 +37,15 @@ const Links = ({ isOpen, setIsOpen }: IProps) => {
         setIsOpen(false)
     }, [pathname, setIsOpen])
 
+    // Lock background scroll while the drawer is open — otherwise touch
+    // gestures on the backdrop scroll the page underneath it.
+    useEffect(() => {
+        document.body.style.overflow = isOpen ? 'hidden' : 'unset'
+        return () => {
+            document.body.style.overflow = 'unset'
+        }
+    }, [isOpen])
+
     const handleLogout = () => {
         queryClient.clear()
         clearPersistedQueryCache()

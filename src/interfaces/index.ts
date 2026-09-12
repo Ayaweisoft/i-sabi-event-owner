@@ -523,6 +523,7 @@ export interface IEventSummary {
         checkInRate: number
         types: { ticketType: string; amount: number; purchased: number; totalSlots: number; soldSlots: number; isSoldOut: boolean }[]
         recent: ITicketPurchase[]
+        platformFeePercentage: number
     }
     voting?: {
         totalVotes: number
