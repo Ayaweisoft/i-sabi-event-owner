@@ -837,6 +837,29 @@ export interface IVotePackagesResponse {
     packages: IVotePackage[]
 }
 
+// GET/PATCH /v2/vote/:id/settings — event-owner voting settings
+export interface IVotingSettings {
+    showVoteCount: boolean
+    freeVotesEnabled: boolean
+    freeVotesPerDay: number
+    freeVotePeriod: {
+        mode: 'event' | 'custom'
+        startDate?: string
+        endDate?: string
+    }
+}
+
+export interface IUpdateVotingSettings {
+    showVoteCount?: boolean
+    freeVotesEnabled?: boolean
+    freeVotesPerDay?: number
+    freeVotePeriod?: {
+        mode: 'event' | 'custom'
+        startDate?: string
+        endDate?: string
+    }
+}
+
 // GET /v2/vote/:id/share — ready-made per-contestant voting links
 export interface IContestantShareLink {
     _id:        string
