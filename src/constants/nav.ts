@@ -2,7 +2,7 @@ import { INav } from '@/interfaces';
 import { ROUTES } from './routes';
 import { BiSolidCollection } from 'react-icons/bi';
 import { TbTransactionEuro } from 'react-icons/tb';
-import { MdDashboard, MdEvent, MdNotifications, MdAccountBalanceWallet, MdArticle, MdCampaign, MdVerifiedUser, MdDynamicForm } from 'react-icons/md';
+import { MdDashboard, MdEvent, MdNotifications, MdAccountBalanceWallet, MdArticle, MdCampaign, MdVerifiedUser, MdDynamicForm, MdGroupWork } from 'react-icons/md';
 
 const dashboardNavs: INav[] = [
     {
@@ -39,6 +39,12 @@ const dashboardNavs: INav[] = [
                 title: "Forms",
                 link: ROUTES.OWNER.FORMS.INDEX,
                 Icon: MdDynamicForm,
+            },
+            {
+                id: 12,
+                title: "Event Groups",
+                link: ROUTES.OWNER.GROUPS.INDEX,
+                Icon: MdGroupWork,
             },
             {
                 id: 5,

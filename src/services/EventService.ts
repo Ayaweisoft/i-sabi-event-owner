@@ -8,7 +8,11 @@ import {
     ISubmitTicketType,
     ICreateContestant,
 } from '@/interfaces'
-import type { ICreateVotePackage, IUpdateVotePackage, IUpdateVotingSettings } from '@/interfaces'
+import type {
+    ICreateVotePackage, IUpdateVotePackage, IUpdateVotingSettings,
+    ICreateVoteCategory, IUpdateVoteCategory, IAddContestantToCategory,
+    ICreateEventGroup, IUpdateEventGroup,
+} from '@/interfaces'
 import type {
     IForm,
     IFormsListResponse,
@@ -100,9 +104,9 @@ export const apiAddContestant = (
     { token }: { id: string; token: string },
 ) => BaseService.post('create-contestant', data, Auth(token))
 
-/** PUT /update-contestant/:id — update name, nickname, or image */
+/** PUT /update-contestant/:id — update name, nickname, image, or vote category */
 export const apiUpdateContestant = (
-    data: { fullname?: string; nickname?: string; image_url?: string },
+    data: { fullname?: string; nickname?: string; image_url?: string; vote_category_id?: string | null },
     { id, token }: { id: string; token: string },
 ) => BaseService.put(`update-contestant/${id}`, data, Auth(token))
 
@@ -206,6 +210,68 @@ export const apiGetContestantShareLinks = (
     token: string,
     { id }: { id: string },
 ) => BaseService.get(`v2/vote/${id}/share`, Auth(token))
+
+// ── Vote Categories ───────────────────────────────────────────────────────────
+
+/** GET /v2/vote/:id/categories — public, but used here for the owner dashboard too */
+export const apiGetVoteCategories = (
+    token: string,
+    { id }: { id: string },
+) => BaseService.get(`v2/vote/${id}/categories`, Auth(token))
+
+/** POST /v2/vote/:id/categories — owner-or-admin */
+export const apiCreateVoteCategory = (
+    data: ICreateVoteCategory,
+    { id, token }: { id: string; token: string },
+) => BaseService.post(`v2/vote/${id}/categories`, data, Auth(token))
+
+/** PATCH /v2/vote/:id/categories/:voteCategoryId */
+export const apiUpdateVoteCategory = (
+    data: IUpdateVoteCategory,
+    { id, voteCategoryId, token }: { id: string; voteCategoryId: string; token: string },
+) => BaseService.patch(`v2/vote/${id}/categories/${voteCategoryId}`, data, Auth(token))
+
+/** DELETE /v2/vote/:id/categories/:voteCategoryId — contestants move to "uncategorized", not deleted */
+export const apiDeleteVoteCategory = (
+    _: null,
+    { id, voteCategoryId, token }: { id: string; voteCategoryId: string; token: string },
+) => BaseService.delete(`v2/vote/${id}/categories/${voteCategoryId}`, Auth(token))
+
+/**
+ * POST /v2/vote/:id/contestants/:contestantId/categories — enter an existing
+ * contestant's profile into an additional category they also qualify for.
+ * Creates a new, independently-numbered entry (own my_code, own vote_count)
+ * linked back via contestantGroupId — never mutates the source entry.
+ */
+export const apiAddContestantToCategory = (
+    data: IAddContestantToCategory,
+    { id, contestantId, token }: { id: string; contestantId: string; token: string },
+) => BaseService.post(`v2/vote/${id}/contestants/${contestantId}/categories`, data, Auth(token))
+
+// ── Event Groups ("classic") ─────────────────────────────────────────────────
+
+/** POST /v2/event-group — bundle existing events behind one shareable link */
+export const apiCreateEventGroup = (
+    data: ICreateEventGroup,
+    { token }: { token: string },
+) => BaseService.post('v2/event-group', data, Auth(token))
+
+/** GET /v2/event-group/mine */
+export const apiGetMyEventGroups = (
+    token: string,
+) => BaseService.get('v2/event-group/mine', Auth(token))
+
+/** PATCH /v2/event-group/:id */
+export const apiUpdateEventGroup = (
+    data: IUpdateEventGroup,
+    { id, token }: { id: string; token: string },
+) => BaseService.patch(`v2/event-group/${id}`, data, Auth(token))
+
+/** DELETE /v2/event-group/:id — removes the bundle only, never the underlying events */
+export const apiDeleteEventGroup = (
+    _: null,
+    { id, token }: { id: string; token: string },
+) => BaseService.delete(`v2/event-group/${id}`, Auth(token))
 
 /** GET /v2/vote/:id/settings — vote-count visibility + free-vote config. Owner-or-admin. */
 export const apiGetVotingSettings = (
