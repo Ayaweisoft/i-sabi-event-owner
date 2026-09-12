@@ -4,6 +4,8 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useParams } from 'next/navigation'
 import useFetch from '@/hooks/useFetch'
+import useAuthStore from '@/hooks/useAuth'
+import { toast } from 'react-toastify'
 import NoResult from '@/components/NoResult'
 import StatCard from '@/components/StatCard'
 import ProgressBar from '@/components/ProgressBar'
@@ -12,6 +14,7 @@ import {
     apiGetEventSummary,
     apiGetSalesTrend,
     apiGetAudienceInsights,
+    apiExportAudienceCSV,
     apiGetHealthScore,
     apiGetVoteTrend,
     apiGetWhoVoted,
@@ -574,11 +577,36 @@ const SubmissionsTab = ({ event }: { event: IEventSummary }) => {
 
 // ── Audience Tab ──────────────────────────────────────────────────────────────
 const AudienceTab = ({ id }: { id: string }) => {
+    const token = useAuthStore((s) => s.token)
+    const [exporting, setExporting] = useState(false)
+
     const { data, isLoading } = useFetch<IAudienceInsights>({
         api: apiGetAudienceInsights,
         key: ['AUDIENCE', id],
         param: { id },
     })
+
+    const handleExport = async () => {
+        if (!token) return
+        setExporting(true)
+        try {
+            const res = await apiExportAudienceCSV(token, { id })
+            const blob = new Blob([res.data], { type: 'text/csv' })
+            const url  = URL.createObjectURL(blob)
+            const a    = document.createElement('a')
+            const cd   = (res.headers['content-disposition'] as string) ?? ''
+            const fname = cd.match(/filename="?([^"]+)"?/)?.[1] ?? `audience-${id}.csv`
+            a.href = url
+            a.download = fname
+            a.click()
+            URL.revokeObjectURL(url)
+            toast.success('CSV downloaded')
+        } catch {
+            toast.error('Export failed')
+        } finally {
+            setExporting(false)
+        }
+    }
 
     if (isLoading || !data) return <NoResult isLoading={isLoading} desc="Loading audience data…" />
 
@@ -649,14 +677,28 @@ const AudienceTab = ({ id }: { id: string }) => {
 
             {/* Top buyers */}
             <Card>
-                <SectionHeader title="Top Buyers" />
+                <SectionHeader
+                    title="Top Buyers"
+                    action={
+                        <button
+                            onClick={handleExport}
+                            disabled={exporting}
+                            className="text-xs font-semibold flex items-center gap-1 disabled:opacity-60"
+                            style={{ color: GREEN }}
+                        >
+                            <MdOutlineFileDownload className="text-base" /> {exporting ? 'Exporting…' : 'Export CSV'}
+                        </button>
+                    }
+                />
                 <div className="flex flex-col divide-y" style={{ borderColor: BORDER }}>
                     {data.topBuyers.map((b, i) => (
                         <div key={i} className="flex items-center gap-3 py-2.5">
                             <span className="text-xs font-bold w-5" style={{ color: TEXT_LIGHT }}>#{i + 1}</span>
                             <div className="flex-1 min-w-0">
                                 <p className="text-sm font-semibold">{b.name}</p>
-                                <p className="text-xs" style={{ color: TEXT_LIGHT }}>{b.tickets} tickets</p>
+                                <p className="text-xs truncate" style={{ color: TEXT_LIGHT }}>
+                                    {b.tickets} tickets{b.email ? ` · ${b.email}` : ''}{b.phone ? ` · ${b.phone}` : ''}
+                                </p>
                             </div>
                             <span className="text-sm font-bold" style={{ color: GREEN }}>{formatNaira(b.spend)}</span>
                         </div>
