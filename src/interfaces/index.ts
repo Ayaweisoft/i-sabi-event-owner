@@ -835,6 +835,23 @@ export interface IVotePackagesResponse {
     packages: IVotePackage[]
 }
 
+// GET /v2/vote/:id/share — ready-made per-contestant voting links
+export interface IContestantShareLink {
+    _id:        string
+    fullname:   string
+    nickname:   string
+    my_code:    number
+    vote_count: number
+    votingLink: string
+}
+
+export interface IContestantShareLinksResponse {
+    eventId:     string
+    eventName:   string
+    slug:        string
+    contestants: IContestantShareLink[]
+}
+
 export interface ICreateVotePackage {
     eventId:       string
     contestantId:  string
