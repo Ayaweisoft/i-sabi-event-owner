@@ -524,7 +524,8 @@ export interface IEventSummary {
         costPerVote: number
         contestantCount: number
         estimatedRevenue: number
-        leaderboard: IContestantLeader[]
+        platformFeePercentage: number
+        leaderboard: IContestantLeader[] // full roster, not truncated
     }
     forms?: {
         title: string
@@ -583,6 +584,7 @@ export interface IVoteTrend {
     period: string
     labels: string[]
     datasets: IVoteTrendDataset[]
+    totals: { votes: number[]; revenue: number[] }
 }
 
 export interface IEventOwnerTx {

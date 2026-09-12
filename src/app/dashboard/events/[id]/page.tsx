@@ -460,17 +460,25 @@ const ContestantsTab = ({ event, id }: { event: IEventSummary; id: string }) => 
 }
 
 // ── Votes Tab (VOTING) ────────────────────────────────────────────────────────
+const PERIODS = ['daily', 'weekly', 'monthly'] as const
+
 const VotesTab = ({ event, id }: { event: IEventSummary; id: string }) => {
+    const [period, setPeriod] = useState<typeof PERIODS[number]>('daily')
+    // undefined = event-wide activity log; a contestant _id narrows it to
+    // that contestant's voters (who-voted-for-me.js already supports this
+    // via ?contestantId=, it just wasn't wired up from here before).
+    const [selectedContestant, setSelectedContestant] = useState<string | undefined>(undefined)
+
     const { data: trend, isLoading: trendLoading } = useFetch<IVoteTrend>({
         api: apiGetVoteTrend,
-        key: ['VOTE_TREND', id],
-        param: { id, period: 'daily' },
+        key: ['VOTE_TREND', id, period],
+        param: { id, period },
     })
 
-    const { data: whoVoted } = useFetch<IWhoVotedResponse>({
+    const { data: whoVoted, isLoading: whoVotedLoading } = useFetch<IWhoVotedResponse>({
         api: apiGetWhoVoted,
-        key: ['WHO_VOTED', id],
-        param: { id },
+        key: ['WHO_VOTED', id, selectedContestant ?? 'all'],
+        param: { id, contestantId: selectedContestant },
     })
 
     const chartData = (trend?.labels || []).map((label, li) => {
@@ -479,7 +487,18 @@ const VotesTab = ({ event, id }: { event: IEventSummary; id: string }) => {
         return point
     })
 
+    // Overall votes + revenue traction — separate from the per-contestant
+    // breakdown above, so "how is this event doing overall" doesn't require
+    // mentally summing every contestant's line.
+    const totalsChartData = (trend?.labels || []).map((label, li) => ({
+        label,
+        votes:   trend?.totals?.votes?.[li]   || 0,
+        revenue: trend?.totals?.revenue?.[li] || 0,
+    }))
+
     const voteLog = whoVoted?.voters || whoVoted?.votes || whoVoted?.data || []
+    const contestants = event.voting?.leaderboard || []
+    const selectedContestantName = contestants.find((c) => c._id === selectedContestant)?.fullname
 
     return (
         <div className="flex flex-col gap-4">
@@ -490,16 +509,90 @@ const VotesTab = ({ event, id }: { event: IEventSummary; id: string }) => {
                         <p className="text-2xl font-bold mt-1">{event.voting.totalVotes.toLocaleString()}</p>
                     </Card>
                     <Card>
-                        <p className="text-xs font-semibold uppercase" style={{ color: TEXT_LIGHT }}>Revenue</p>
+                        <p className="text-xs font-semibold uppercase" style={{ color: TEXT_LIGHT }}>Gross Revenue</p>
                         <p className="text-2xl font-bold mt-1" style={{ color: GREEN }}>{formatNaira(event.voting.estimatedRevenue)}</p>
                     </Card>
                 </div>
             )}
 
-            {/* Vote trend chart */}
-            {chartData.length > 0 ? (
+            {/* All contestants — every one, not a top-5 preview, each with a
+                direct way to see who voted for them specifically. */}
+            <Card>
+                <SectionHeader title={`All Contestants · ${contestants.length}`} />
+                <div className="flex flex-col divide-y" style={{ borderColor: BORDER }}>
+                    {contestants.map((c) => (
+                        <div key={c._id} className="flex items-center justify-between py-2.5 gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                                {c.image_url && (
+                                    <Image src={c.image_url} width={32} height={32} alt={c.fullname}
+                                        className="rounded-full object-cover w-8 h-8 border" style={{ borderColor: BORDER }} />
+                                )}
+                                <div className="min-w-0">
+                                    <p className="text-sm font-semibold truncate">{c.fullname}</p>
+                                    <p className="text-xs" style={{ color: TEXT_LIGHT }}>{c.vote_count.toLocaleString()} votes · {c.pct}%</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setSelectedContestant((prev) => (prev === c._id ? undefined : c._id))}
+                                className="text-xs font-semibold px-2.5 py-1.5 rounded-lg shrink-0 transition"
+                                style={{
+                                    color:      selectedContestant === c._id ? '#fff' : GREEN,
+                                    background: selectedContestant === c._id ? GREEN  : 'rgba(45,140,62,.1)',
+                                }}
+                            >
+                                {selectedContestant === c._id ? 'Showing voters' : 'See who voted'}
+                            </button>
+                        </div>
+                    ))}
+                    {contestants.length === 0 && (
+                        <p className="text-sm py-2" style={{ color: TEXT_LIGHT }}>No contestants yet.</p>
+                    )}
+                </div>
+            </Card>
+
+            {/* Period toggle for both trend charts below */}
+            <div className="flex gap-1.5">
+                {PERIODS.map((p) => (
+                    <button
+                        key={p}
+                        onClick={() => setPeriod(p)}
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition"
+                        style={{
+                            color:      period === p ? '#fff' : TEXT_LIGHT,
+                            background: period === p ? GREEN  : SURFACE,
+                            border: `1px solid ${period === p ? GREEN : BORDER}`,
+                        }}
+                    >
+                        {p}
+                    </button>
+                ))}
+            </div>
+
+            {/* Overall progress — votes + revenue over time, event-wide */}
+            {totalsChartData.length > 0 ? (
                 <Card>
-                    <SectionHeader title="Votes Over Time" />
+                    <SectionHeader title="Progress — Votes & Revenue" />
+                    <ResponsiveContainer width="100%" height={200}>
+                        <LineChart data={totalsChartData} margin={{ top: 0, right: 8, left: -20, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={BORDER} />
+                            <XAxis dataKey="label" tick={{ fontSize: 10, fill: TEXT_LIGHT }} />
+                            <YAxis yAxisId="votes" tick={{ fontSize: 10, fill: TEXT_LIGHT }} />
+                            <YAxis yAxisId="revenue" orientation="right" tick={{ fontSize: 10, fill: TEXT_LIGHT }} />
+                            <Tooltip formatter={(value, name) => name === 'revenue' ? formatNaira(Number(value) || 0) : value} />
+                            <Legend />
+                            <Line yAxisId="votes"   type="monotone" dataKey="votes"   name="Votes"   stroke={GREEN} strokeWidth={2.5} dot={false} />
+                            <Line yAxisId="revenue" type="monotone" dataKey="revenue" name="Revenue" stroke={GOLD}  strokeWidth={2.5} dot={false} />
+                        </LineChart>
+                    </ResponsiveContainer>
+                </Card>
+            ) : (
+                !trendLoading && <p className="text-sm" style={{ color: TEXT_LIGHT }}>No {period} trend data yet.</p>
+            )}
+
+            {/* Per-contestant vote trend chart */}
+            {chartData.length > 0 && (
+                <Card>
+                    <SectionHeader title="Votes Over Time — Per Contestant" />
                     <ResponsiveContainer width="100%" height={200}>
                         <LineChart data={chartData} margin={{ top: 0, right: 8, left: -20, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={BORDER} />
@@ -520,21 +613,36 @@ const VotesTab = ({ event, id }: { event: IEventSummary; id: string }) => {
                         </LineChart>
                     </ResponsiveContainer>
                 </Card>
-            ) : (
-                !trendLoading && <p className="text-sm" style={{ color: TEXT_LIGHT }}>No vote trend data yet.</p>
             )}
 
-            {/* Vote activity log */}
-            {voteLog.length > 0 && (
+            {/* Vote activity log — event-wide, or narrowed to one contestant */}
+            {(voteLog.length > 0 || whoVotedLoading || selectedContestant) && (
                 <Card>
                     <SectionHeader
-                        title="Vote Activity"
+                        title={selectedContestantName ? `Who Voted — ${selectedContestantName}` : 'Vote Activity'}
                         action={
-                            <button className="text-xs font-semibold flex items-center gap-1" style={{ color: GREEN }}>
-                                <MdOutlineFileDownload className="text-base" /> Export
-                            </button>
+                            <div className="flex items-center gap-2">
+                                {selectedContestant && (
+                                    <button
+                                        onClick={() => setSelectedContestant(undefined)}
+                                        className="text-xs font-semibold"
+                                        style={{ color: TEXT_LIGHT }}
+                                    >
+                                        Clear
+                                    </button>
+                                )}
+                                <button className="text-xs font-semibold flex items-center gap-1" style={{ color: GREEN }}>
+                                    <MdOutlineFileDownload className="text-base" /> Export
+                                </button>
+                            </div>
                         }
                     />
+                    {whoVotedLoading && <p className="text-sm py-2" style={{ color: TEXT_LIGHT }}>Loading…</p>}
+                    {!whoVotedLoading && voteLog.length === 0 && (
+                        <p className="text-sm py-2" style={{ color: TEXT_LIGHT }}>
+                            {selectedContestantName ? `No votes for ${selectedContestantName} yet.` : 'No votes yet.'}
+                        </p>
+                    )}
                     <div className="flex flex-col divide-y" style={{ borderColor: BORDER }}>
                         {voteLog.slice(0, 20).map((v, i) => {
                             const voterName  = v.fullname || v.contestant?.fullname || 'Voter'
@@ -846,7 +954,9 @@ const FinanceTab = ({ event }: { event: IEventSummary }) => {
     else if (event.type === 'VOTING' && event.voting)     gross = event.voting.estimatedRevenue
     else if (event.type === 'FORM-SALES' && event.forms)  gross = event.forms.revenue
 
-    const platformCutPct  = event.type === 'TICKETING' ? (event.tickets?.platformFeePercentage ?? 0) : 0
+    const platformCutPct  =
+        event.type === 'TICKETING' ? (event.tickets?.platformFeePercentage ?? 0) :
+        event.type === 'VOTING'    ? (event.voting?.platformFeePercentage ?? 0)  : 0
     const platformCut     = Math.round(gross * (platformCutPct / 100))
     const yourEarnings    = gross - platformCut
 
