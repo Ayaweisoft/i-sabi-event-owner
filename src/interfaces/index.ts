@@ -80,14 +80,8 @@ export interface IBank {
     bankCode: string
 }
 export interface IBanksResponse {
-    message: string,
-    banks: {
-        confirmationMessage: string,
-        confirmationCode: number,
-        details: {
-            message: IBank[]
-        }
-    }
+    message: string
+    banks: IBank[]
 }
 
 
@@ -561,7 +555,7 @@ export interface IAudienceInsights {
     urgencyBuyers: number
     ticketTypePref: { type: string; count: number; pct: number }[]
     timingHeatmap: number[][]
-    topBuyers: { name: string; email: string; tickets: number; spend: number }[]
+    topBuyers: { name: string; email: string; phone: string; tickets: number; spend: number }[]
 }
 
 export interface IHealthScore {
@@ -634,6 +628,26 @@ export interface INotificationsResponse {
     limit: number
     pages: number
     notifications: INotification[]
+}
+
+export interface IReconciliationProgress {
+    totals: {
+        pending: number
+        failed: number
+        ok: number
+        refunded: number
+        resolved: number
+    }
+    totalPayments: number
+    deliveredRate: number
+    recentIssues: {
+        ref: string
+        service: 'ticket' | 'vote' | 'form'
+        status: 'pending_delivery' | 'failed_delivery'
+        amount: number
+        lastError: string | null
+        createdAt: string
+    }[]
 }
 
 export interface ICheckinEntry {
