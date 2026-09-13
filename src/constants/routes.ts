@@ -34,5 +34,6 @@ export const ROUTES = {
             CREATE: "/dashboard/withdraw",
         },
         RECONCILIATION: "/dashboard/reconciliation",
+        GUIDE: "/dashboard/guide",
     },
 }

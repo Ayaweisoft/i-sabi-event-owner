@@ -4,6 +4,7 @@ import AuthGuard from "./_components/AuthGuard";
 import SideNav from "./_components/SideNav";
 import Header from "./_components/Header";
 import InlineLoader from "@/components/Loader/Inline";
+import NavigationTour from "@/components/Tour/NavigationTour";
 
 // All dashboard routes are private — never index them
 export const metadata: Metadata = {
@@ -24,6 +25,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         </div>
                     </div>
                 </div>
+                <NavigationTour />
             </Suspense>
         </AuthGuard>
     );

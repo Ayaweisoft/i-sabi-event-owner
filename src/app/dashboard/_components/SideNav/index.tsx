@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { TbLogout2 } from 'react-icons/tb'
+import { MdHelpOutline } from 'react-icons/md'
 import Logo from '@/assets/logo.png'
 import LogoutModal from '@/components/LogoutModal'
 import { ROUTES } from '@/constants/routes'
@@ -12,6 +13,7 @@ import useAuthStore from '@/hooks/useAuth'
 import { primeAdzCache } from '@/lib/adz-cache'
 import { clearPersistedQueryCache } from '@/providers/QueryProvider'
 import { dashboardNavs } from '@/constants/nav'
+import { navTourId } from '@/constants/tour'
 
 const GREEN      = '#2d8c3e'
 const GREEN_DEEP = '#07360E'
@@ -113,6 +115,7 @@ const SideNav = () => {
                                         <Link
                                             key={item.id}
                                             href={item.link}
+                                            data-tour={navTourId(item.title)}
                                             onMouseEnter={() => warmRoute(item.link)}
                                             onFocus={() => warmRoute(item.link)}
                                             className="flex items-center gap-3 rounded-xl px-3 py-2.5 font-medium transition-colors"
@@ -131,14 +134,23 @@ const SideNav = () => {
                     ))}
                 </nav>
 
-                {/* Logout */}
+                {/* User guide + Logout */}
                 <div
                     className="px-3 pb-6"
                     style={{ borderTop: `1px solid ${BORDER}` }}
                 >
+                    <Link
+                        href={ROUTES.OWNER.GUIDE}
+                        onMouseEnter={() => warmRoute(ROUTES.OWNER.GUIDE)}
+                        className="flex items-center gap-3 rounded-xl px-3 py-2.5 font-medium transition-colors mt-3"
+                        style={{ color: TEXT_LIGHT }}
+                    >
+                        <MdHelpOutline className="text-lg shrink-0" />
+                        <span>User Guide</span>
+                    </Link>
                     <button
                         onClick={() => setLogoutModalOpen(true)}
-                        className="flex items-center gap-3 rounded-xl px-3 py-2.5 w-full font-medium transition-colors text-red-400 hover:text-red-300 hover:bg-white/5 mt-3"
+                        className="flex items-center gap-3 rounded-xl px-3 py-2.5 w-full font-medium transition-colors text-red-400 hover:text-red-300 hover:bg-white/5"
                     >
                         <TbLogout2 className="text-lg shrink-0" />
                         <span>Logout</span>
