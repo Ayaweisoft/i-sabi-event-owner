@@ -722,11 +722,16 @@ const VotesTab = ({ event, id }: { event: IEventSummary; id: string }) => {
         param: { id, period },
     })
 
-    const { data: whoVoted, isLoading: whoVotedLoading } = useFetch<IWhoVotedResponse>({
+    const { data: whoVoted, isLoading: whoVotedFetching, isPlaceholderData: whoVotedStale } = useFetch<IWhoVotedResponse>({
         api: apiGetWhoVoted,
         key: ['WHO_VOTED', id, selectedContestant ?? 'all'],
         param: { id, contestantId: selectedContestant },
     })
+    // useFetch keeps the previous query's data visible while a new one is
+    // in flight (keepPreviousData) — without this, switching contestants
+    // showed the *previous* contestant's voters under the *new* one's name
+    // for a moment, since isLoading alone stays false during that swap.
+    const whoVotedLoading = whoVotedFetching || whoVotedStale
 
     const chartData = (trend?.labels || []).map((label, li) => {
         const point: Record<string, string | number> = { label }
@@ -745,7 +750,15 @@ const VotesTab = ({ event, id }: { event: IEventSummary; id: string }) => {
 
     const voteLog = whoVoted?.voters || whoVoted?.votes || whoVoted?.data || []
     const contestants = event.voting?.leaderboard || []
-    const selectedContestantName = contestants.find((c) => c._id === selectedContestant)?.fullname
+    const selectedContestantRow = contestants.find((c) => c._id === selectedContestant)
+    const selectedContestantName = selectedContestantRow?.fullname
+
+    // Voter identity is only logged for votes cast since the fix that wired
+    // VoteTransaction into the main wallet vote-purchase flow — older votes
+    // were never recorded with a voter, so an empty list here doesn't mean
+    // zero votes when the real (all-time) count says otherwise.
+    const realVoteCount = selectedContestant ? (selectedContestantRow?.vote_count ?? 0) : (event.voting?.totalVotes ?? 0)
+    const untrackedHistoricalVotes = !whoVotedLoading && voteLog.length === 0 && realVoteCount > 0
 
     return (
         <div className="flex flex-col gap-4">
@@ -863,7 +876,7 @@ const VotesTab = ({ event, id }: { event: IEventSummary; id: string }) => {
             )}
 
             {/* Vote activity log — event-wide, or narrowed to one contestant */}
-            {(voteLog.length > 0 || whoVotedLoading || selectedContestant) && (
+            {(voteLog.length > 0 || whoVotedLoading || selectedContestant || realVoteCount > 0) && (
                 <Card>
                     <SectionHeader
                         title={selectedContestantName ? `Who Voted — ${selectedContestantName}` : 'Vote Activity'}
@@ -886,9 +899,18 @@ const VotesTab = ({ event, id }: { event: IEventSummary; id: string }) => {
                     />
                     {whoVotedLoading && <p className="text-sm py-2" style={{ color: TEXT_LIGHT }}>Loading…</p>}
                     {!whoVotedLoading && voteLog.length === 0 && (
-                        <p className="text-sm py-2" style={{ color: TEXT_LIGHT }}>
-                            {selectedContestantName ? `No votes for ${selectedContestantName} yet.` : 'No votes yet.'}
-                        </p>
+                        untrackedHistoricalVotes ? (
+                            <p className="text-sm py-2" style={{ color: TEXT_LIGHT }}>
+                                {selectedContestantName ? `${selectedContestantName} has` : 'This event has'}{' '}
+                                {realVoteCount.toLocaleString()} vote{realVoteCount !== 1 ? 's' : ''}, but voter
+                                identity is only tracked for votes cast since our latest update — older votes
+                                can&apos;t be attributed to a specific voter.
+                            </p>
+                        ) : (
+                            <p className="text-sm py-2" style={{ color: TEXT_LIGHT }}>
+                                {selectedContestantName ? `No votes for ${selectedContestantName} yet.` : 'No votes yet.'}
+                            </p>
+                        )
                     )}
                     <div className="flex flex-col divide-y" style={{ borderColor: BORDER }}>
                         {voteLog.slice(0, 20).map((v, i) => {
@@ -1289,11 +1311,14 @@ const SettingsTab = ({ event, id }: { event: IEventSummary; id: string }) => {
     // Without this, a failed fetch (network hiccup, 403, server error) left
     // `settings` — and therefore `form` — permanently null, and the tab sat
     // on the loading spinner forever with no way out short of a hard refresh.
+    // Surfacing the real server message (rather than a generic string) is
+    // the difference between "it's broken, no idea why" and an actionable
+    // reason (e.g. "Not authorized" vs. a genuine 500) the next time this fires.
     if (error || !settings) {
         return (
             <NoResult
                 isLoading={false}
-                desc="Could not load voting settings. Please try again."
+                desc={error ? extractErrorMessage(error, 'Could not load voting settings. Please try again.') : 'Could not load voting settings. Please try again.'}
                 buttonText="Retry"
                 onClick={() => refetch()}
             />
