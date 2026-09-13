@@ -6,7 +6,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import React, { useEffect } from 'react'
 import { TbLogout2 } from 'react-icons/tb'
 import { MdOutlineClose, MdHelpOutline } from 'react-icons/md'
-import Logo from '@/assets/logo.png'
+import LogoWhite from '@/assets/logo-white.png'
 import useAuthStore from '@/hooks/useAuth'
 import { ROUTES } from '@/constants/routes'
 import { primeAdzCache } from '@/lib/adz-cache'
@@ -98,12 +98,14 @@ const Links = ({ isOpen, setIsOpen }: IProps) => {
                         style={{ borderBottom: `1px solid ${BORDER}` }}
                     >
                         <div>
+                            {/* Dedicated white variant, not a CSS filter —
+                                see SideNav's comment for why brightness-0
+                                invert silently erased the icon's "s" cutout. */}
                             <Link href={ROUTES.OWNER.INDEX} onClick={() => setIsOpen(false)}>
                                 <Image
-                                    src={Logo}
+                                    src={LogoWhite}
                                     alt="i-sabi"
                                     style={{ width: '6rem', height: 'auto' }}
-                                    className="brightness-0 invert"
                                     priority
                                 />
                             </Link>
