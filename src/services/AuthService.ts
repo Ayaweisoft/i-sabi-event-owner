@@ -35,6 +35,16 @@ export const apiGetOwnerSummary = (token: string) =>
 export const apiGetWalletSummary = (token: string) =>
     BaseService.get(`v2/event-owner/wallet/summary`, Auth(token))
 
+// ── Wallet top-up — the only deposit-in path for this wallet; everything
+// else only ever arrives as payout credit from the owner's own sales. ────────
+export const apiInitiateWalletTopup = (
+    data: { amount: number; callbackUrl?: string },
+    { token }: { token: string },
+) => BaseService.post(`v2/event-owner/wallet/topup/initiate`, data, Auth(token))
+
+export const apiVerifyWalletTopup = (token: string, { reference }: { reference: string }) =>
+    BaseService.get(`v2/event-owner/wallet/topup/verify`, { ...Auth(token), params: { reference } })
+
 export const apiGetNotifications = (token: string, { type, page, limit }: { type?: string; page?: number; limit?: number } = {}) =>
     BaseService.get(`v2/event-owner/notifications`, {
         ...Auth(token),
