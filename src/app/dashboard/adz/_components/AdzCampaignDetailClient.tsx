@@ -6,14 +6,14 @@ import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useParams, useRouter } from 'next/navigation'
 import { toast } from 'react-toastify'
-import { MdArrowBack, MdEdit, MdSend } from 'react-icons/md'
+import { MdArrowBack, MdEdit, MdSend, MdWarningAmber, MdPlayArrow } from 'react-icons/md'
 import NoResult from '@/components/NoResult'
 import { Button } from '@/components/ui/button'
 import useFetch from '@/hooks/useFetch'
 import useAuthStore from '@/hooks/useAuth'
 import { ROUTES } from '@/constants/routes'
 import { ADZ_CACHE_POLICY, ADZ_QUERY_KEYS, invalidateAdzCache } from '@/lib/adz-cache'
-import { apiGetAdzCampaign, apiSubmitAdzCampaign } from '@/services/AdzService'
+import { apiGetAdzCampaign, apiSubmitAdzCampaign, apiResumeAdzCampaign } from '@/services/AdzService'
 import { AdzCampaignResponse, ADZ_PLACEMENT_LABELS } from '@/interfaces/adz'
 import { Card, MetricTile, SectionTitle, StatusBadge, formatAdzDate, formatAdzDateTime, formatAdzPercent, getBudgetLabel, getCtr } from './shared'
 
@@ -25,6 +25,7 @@ const AdzCampaignDetailClient = () => {
     const queryClient = useQueryClient()
     const token = useAuthStore((state) => state.token)
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [isResuming, setIsResuming] = useState(false)
 
     const { data, isLoading, refetch } = useFetch<AdzCampaignResponse>({
         api: apiGetAdzCampaign,
@@ -53,6 +54,24 @@ const AdzCampaignDetailClient = () => {
             toast.error(Array.isArray(message) ? message[0] : message || 'Unable to submit campaign.')
         } finally {
             setIsSubmitting(false)
+        }
+    }
+
+    const handleResume = async () => {
+        if (!token || !campaign) return
+        try {
+            setIsResuming(true)
+            await apiResumeAdzCampaign({}, { id: campaign._id, token })
+            await invalidateAdzCache(queryClient, campaign._id)
+            toast.success('Campaign resumed.')
+            refetch()
+        } catch (error: unknown) {
+            const message = typeof error === 'object' && error && 'response' in error
+                ? (error as { response?: { data?: { error?: string } } }).response?.data?.error
+                : undefined
+            toast.error(message || 'Unable to resume campaign — your wallet balance may still be too low.')
+        } finally {
+            setIsResuming(false)
         }
     }
 
@@ -105,6 +124,30 @@ const AdzCampaignDetailClient = () => {
                     </div>
                 </div>
             </div>
+
+            {campaign.status === 'PAUSED' && campaign.pausedReason === 'INSUFFICIENT_FUNDS' && (
+                <div className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-5 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-start gap-3">
+                        <MdWarningAmber className="mt-0.5 shrink-0 text-xl text-amber-600" />
+                        <div>
+                            <p className="text-sm font-semibold text-amber-900">Paused — wallet balance too low</p>
+                            <p className="mt-0.5 text-sm text-amber-800">
+                                Your wallet couldn&apos;t cover the next impression, click, or reward for this campaign, so it was
+                                paused automatically. Top up your wallet, then resume — no re-review needed.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex shrink-0 gap-2">
+                        <Button asChild variant="outline" className="rounded-full">
+                            <Link href={ROUTES.OWNER.WALLET}>Fund Wallet</Link>
+                        </Button>
+                        <Button className="rounded-full" onClick={handleResume} disabled={isResuming}>
+                            <MdPlayArrow className="text-base" />
+                            {isResuming ? 'Resuming…' : 'Resume'}
+                        </Button>
+                    </div>
+                </div>
+            )}
 
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                 <MetricTile label="Budget used" value={getBudgetLabel(campaign)} helper="Spent versus total" />

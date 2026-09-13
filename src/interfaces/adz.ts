@@ -100,6 +100,11 @@ export interface AdzCampaign {
     format: AdzFormat
     placements: AdzPlacement[]
     status: AdzStatus
+    // Set only when status is PAUSED because the advertiser's wallet balance
+    // couldn't cover the next chargeable event — distinct from an
+    // admin-initiated pause. Only this kind can be self-resumed without
+    // another admin review round (see apiResumeAdzCampaign).
+    pausedReason?: 'ADMIN' | 'INSUFFICIENT_FUNDS' | null
     eventId?: string | null
     linkedEventName?: string | null
     linkedGameSessionId?: string

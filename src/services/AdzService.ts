@@ -51,3 +51,12 @@ export const apiSubmitAdzCampaign = (
     _: Record<string, never>,
     { id, token }: { id: string; token: string },
 ) => BaseService.post(`${ADZ_BASE}/campaigns/${id}/submit`, {}, Auth(token))
+
+// Self-resume a campaign the wallet-balance check auto-paused (pausedReason
+// 'INSUFFICIENT_FUNDS') — skips another admin review round since only
+// funding, not content, was the problem. Rejected if the wallet still can't
+// cover the next chargeable amount, or if the pause was admin-initiated.
+export const apiResumeAdzCampaign = (
+    _: Record<string, never>,
+    { id, token }: { id: string; token: string },
+) => BaseService.post(`${ADZ_BASE}/campaigns/${id}/resume`, {}, Auth(token))
