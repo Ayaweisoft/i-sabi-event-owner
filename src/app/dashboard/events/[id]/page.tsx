@@ -1279,6 +1279,7 @@ const SettingsTab = ({ event, id }: { event: IEventSummary; id: string }) => {
     }, [settings, form])
 
     const updateMutation = useMutate<IUpdateVotingSettings, unknown>(apiUpdateVotingSettings, {
+        id,
         onSuccess: () => toast.success('Voting settings updated'),
         showErrorMessage: true,
     })
@@ -1316,7 +1317,7 @@ const SettingsTab = ({ event, id }: { event: IEventSummary; id: string }) => {
             toast.error('End date must be after start date')
             return
         }
-        updateMutation.mutate(form, { id } as Parameters<typeof updateMutation.mutate>[1])
+        updateMutation.mutate(form)
     }
 
     return (
