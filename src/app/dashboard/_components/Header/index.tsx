@@ -2,7 +2,7 @@
 import React, { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { BiMenu } from 'react-icons/bi'
-import { MdOutlineClose, MdNotifications } from 'react-icons/md'
+import { MdOutlineClose, MdNotifications, MdHelpOutline, MdOutlineMenuBook, MdOutlineExplore } from 'react-icons/md'
 import { TbLogout2 } from 'react-icons/tb'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -12,6 +12,7 @@ import useAuthStore from '@/hooks/useAuth'
 import { usePathname, useRouter } from 'next/navigation'
 import { ROUTES } from '@/constants/routes'
 import { clearPersistedQueryCache } from '@/providers/QueryProvider'
+import { useTourStore } from '@/hooks/useTour'
 
 const PAGE_TITLES: Record<string, string> = {
     '/dashboard':               'Overview',
@@ -22,15 +23,18 @@ const PAGE_TITLES: Record<string, string> = {
     '/dashboard/notifications': 'Notifications',
     '/dashboard/transactions':  'Transactions',
     '/dashboard/withdraw':      'Withdraw',
+    '/dashboard/guide':         'User Guide',
 }
 
 const DashboardHeader = () => {
     const [isOpen, setIsOpen] = useState(false)
     const [showLogout, setShowLogout] = useState(false)
+    const [showHelp, setShowHelp] = useState(false)
     const pathname  = usePathname()
     const router    = useRouter()
     const queryClient = useQueryClient()
     const { doc, reset } = useAuthStore()
+    const startTour = useTourStore((s) => s.start)
 
     const pageTitle = Object.entries(PAGE_TITLES).find(([key]) =>
         key === pathname || (key !== '/dashboard' && pathname.startsWith(key))
@@ -84,11 +88,56 @@ const DashboardHeader = () => {
                     {/* Notifications bell */}
                     <Link
                         href={ROUTES.OWNER.NOTIFICATIONS}
+                        data-tour="header-notifications"
                         className="p-2 rounded-xl transition hover:bg-[#f4f8f4]"
                         style={{ color: '#6b8f70' }}
                     >
                         <MdNotifications className="text-xl" />
                     </Link>
+
+                    {/* Help menu: restart the tour, or open the user guide */}
+                    <div className="relative">
+                        <button
+                            onClick={() => setShowHelp((v) => !v)}
+                            data-tour="header-help"
+                            className="p-2 rounded-xl transition hover:bg-[#f4f8f4]"
+                            style={{ color: '#6b8f70' }}
+                            aria-label="Help"
+                        >
+                            <MdHelpOutline className="text-xl" />
+                        </button>
+
+                        {showHelp && (
+                            <>
+                                <div
+                                    className="fixed inset-0 z-10"
+                                    onClick={() => setShowHelp(false)}
+                                />
+                                <div
+                                    className="absolute right-0 top-full mt-1 w-56 bg-white rounded-xl shadow-lg z-20 p-1"
+                                    style={{ border: '1px solid #d4e8d6' }}
+                                >
+                                    <button
+                                        onClick={() => { setShowHelp(false); startTour() }}
+                                        className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-[#f4f8f4] transition text-left"
+                                        style={{ color: '#07360E' }}
+                                    >
+                                        <MdOutlineExplore className="text-base" />
+                                        Take the tour
+                                    </button>
+                                    <Link
+                                        href={ROUTES.OWNER.GUIDE}
+                                        onClick={() => setShowHelp(false)}
+                                        className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-[#f4f8f4] transition"
+                                        style={{ color: '#07360E' }}
+                                    >
+                                        <MdOutlineMenuBook className="text-base" />
+                                        Open user guide
+                                    </Link>
+                                </div>
+                            </>
+                        )}
+                    </div>
 
                     {/* Avatar / user dropdown */}
                     <div className="relative hidden md:block">
