@@ -991,7 +991,7 @@ const AudienceTab = ({ id }: { id: string }) => {
     const token = useAuthStore((s) => s.token)
     const [exporting, setExporting] = useState(false)
 
-    const { data, isLoading } = useFetch<IAudienceInsights>({
+    const { data, isLoading, error, refetch } = useFetch<IAudienceInsights>({
         api: apiGetAudienceInsights,
         key: ['AUDIENCE', id],
         param: { id },
@@ -1019,7 +1019,13 @@ const AudienceTab = ({ id }: { id: string }) => {
         }
     }
 
-    if (isLoading || !data) return <NoResult isLoading={isLoading} desc="Loading audience data…" />
+    if (isLoading) return <NoResult isLoading desc="Loading audience data…" />
+    // Same class of bug as SettingsTab/EventWorkspace: a failed fetch left
+    // `data` permanently undefined and rendered a static card mislabeled
+    // "Loading audience data…" instead of a real error with a retry.
+    if (error || !data) {
+        return <NoResult isLoading={false} desc="Could not load audience data. Please try again." buttonText="Retry" onClick={() => refetch()} />
+    }
 
     const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
@@ -1122,13 +1128,19 @@ const AudienceTab = ({ id }: { id: string }) => {
 
 // ── Insights Tab ──────────────────────────────────────────────────────────────
 const InsightsTab = ({ id }: { id: string }) => {
-    const { data, isLoading } = useFetch<IHealthScore>({
+    const { data, isLoading, error, refetch } = useFetch<IHealthScore>({
         api: apiGetHealthScore,
         key: ['HEALTH_SCORE', id],
         param: { id },
     })
 
-    if (isLoading || !data) return <NoResult isLoading={isLoading} desc="Calculating insights…" />
+    if (isLoading) return <NoResult isLoading desc="Calculating insights…" />
+    // Same class of bug as SettingsTab/EventWorkspace/AudienceTab: a failed
+    // fetch left `data` permanently undefined and rendered a static card
+    // mislabeled "Calculating insights…" instead of a real error + retry.
+    if (error || !data) {
+        return <NoResult isLoading={false} desc="Could not calculate insights. Please try again." buttonText="Retry" onClick={() => refetch()} />
+    }
 
     const gradeColor: Record<string, string> = {
         A: GREEN, B: '#3b82f6', C: GOLD, D: '#e74c3c',
@@ -1465,14 +1477,29 @@ const EventWorkspace = () => {
     const { id } = useParams<{ id: string }>()
     const [activeTab, setActiveTab] = useState<TabId>('overview')
 
-    const { data: event, isLoading } = useFetch<IEventSummary>({
+    const { data: event, isLoading, error, refetch } = useFetch<IEventSummary>({
         api: apiGetEventSummary,
         key: ['EVENT_SUMMARY', id],
         param: { id },
     })
 
-    if (isLoading || !event) {
-        return <NoResult isLoading={isLoading} desc="Loading event workspace…" />
+    if (isLoading) {
+        return <NoResult isLoading desc="Loading event workspace…" />
+    }
+
+    // Same class of bug as the Settings tab's fix: without this, a failed
+    // fetch (403 you don't own this event, 404, network error) left `event`
+    // permanently undefined, and this rendered a static "No Result" card
+    // whose description still read "Loading event workspace…" — confusing,
+    // and with no way to retry short of a hard refresh.
+    if (error || !event) {
+        const status = (error as { response?: { status?: number } })?.response?.status
+        const desc = status === 403
+            ? "You don't have access to this event."
+            : status === 404
+                ? 'This event could not be found.'
+                : 'Could not load this event. Please try again.'
+        return <NoResult isLoading={false} desc={desc} buttonText={status ? undefined : 'Retry'} onClick={() => refetch()} />
     }
 
     const tabs =
