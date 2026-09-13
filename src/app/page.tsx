@@ -7,6 +7,7 @@ import { MdVisibility, MdVisibilityOff, MdCheckCircle } from 'react-icons/md'
 import { BiSolidBolt } from 'react-icons/bi'
 import { MdCampaign } from 'react-icons/md'
 import Logo from '@/assets/logo.png'
+import LogoWhite from '@/assets/logo-white.png'
 import useMutate from '@/hooks/useMutate'
 import useAuthStore from '@/hooks/useAuth'
 import { ILoginSuccessData, IReducerAction, IUserLogin } from '@/interfaces'
@@ -95,9 +96,11 @@ const LoginPage = () => {
                     style={{ border: `60px solid ${GOLD}` }}
                 />
 
-                {/* Logo */}
+                {/* Logo — dedicated white variant, not a CSS filter; see
+                    SideNav's comment for why brightness-0 invert silently
+                    erased the icon's internal "s" cutout on dark backgrounds. */}
                 <div className="relative z-10">
-                    <Image src={Logo} alt="i-sabi" className="w-28 brightness-0 invert" />
+                    <Image src={LogoWhite} alt="i-sabi" className="w-28" />
                 </div>
 
                 {/* Body copy */}

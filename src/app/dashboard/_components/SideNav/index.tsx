@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { TbLogout2 } from 'react-icons/tb'
 import { MdHelpOutline } from 'react-icons/md'
-import Logo from '@/assets/logo.png'
+import LogoWhite from '@/assets/logo-white.png'
 import LogoutModal from '@/components/LogoutModal'
 import { ROUTES } from '@/constants/routes'
 import useAuthStore from '@/hooks/useAuth'
@@ -73,12 +73,19 @@ const SideNav = () => {
                     className="px-6 pt-7 pb-5"
                     style={{ borderBottom: `1px solid ${BORDER}` }}
                 >
+                    {/* A dedicated white variant (logo-white.png), not a CSS
+                        filter — brightness-0 invert collapses every opaque
+                        pixel (the green circle AND the white "s" swirl) to
+                        the same solid white, silently erasing the icon's
+                        internal contrast so it rendered as a plain white
+                        disc with no "s" visible at all. This asset instead
+                        punches the "s" out as a transparent cutout, so it
+                        still reads correctly against this dark background. */}
                     <Link href={ROUTES.OWNER.INDEX}>
                         <Image
-                            src={Logo}
+                            src={LogoWhite}
                             alt="i-sabi"
                             style={{ width: '7rem', height: 'auto' }}
-                            className="brightness-0 invert"
                             priority
                         />
                     </Link>
