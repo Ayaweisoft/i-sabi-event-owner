@@ -5,13 +5,13 @@ import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { toast } from 'react-toastify'
-import { MdArrowForward, MdEdit, MdSend } from 'react-icons/md'
+import { MdArrowForward, MdEdit, MdSend, MdWarningAmber, MdPlayArrow } from 'react-icons/md'
 import NoResult from '@/components/NoResult'
 import { Button } from '@/components/ui/button'
 import useFetch from '@/hooks/useFetch'
 import useAuthStore from '@/hooks/useAuth'
 import { ROUTES } from '@/constants/routes'
-import { apiGetAdzEvents, apiListAdzCampaigns, apiSubmitAdzCampaign } from '@/services/AdzService'
+import { apiGetAdzEvents, apiListAdzCampaigns, apiSubmitAdzCampaign, apiResumeAdzCampaign } from '@/services/AdzService'
 import { ADZ_CACHE_POLICY, ADZ_QUERY_KEYS, invalidateAdzCache } from '@/lib/adz-cache'
 import {
     AdzCampaign,
@@ -42,6 +42,7 @@ const AdzCampaignsClient = () => {
     const [status, setStatus] = useState<'ALL' | AdzStatus>('ALL')
     const [eventId, setEventId] = useState('ALL')
     const [submittingId, setSubmittingId] = useState('')
+    const [resumingId, setResumingId] = useState('')
 
     const { data, isLoading, refetch, isFetching } = useFetch<AdzCampaignListResponse>({
         api: apiListAdzCampaigns,
@@ -84,6 +85,25 @@ const AdzCampaignsClient = () => {
             toast.error(Array.isArray(message) ? message[0] : message || 'Unable to submit campaign.')
         } finally {
             setSubmittingId('')
+        }
+    }
+
+    const handleResume = async (campaignId: string) => {
+        if (!token) return
+
+        try {
+            setResumingId(campaignId)
+            await apiResumeAdzCampaign({}, { id: campaignId, token })
+            await invalidateAdzCache(queryClient, campaignId)
+            toast.success('Campaign resumed.')
+            refetch()
+        } catch (error: unknown) {
+            const message = typeof error === 'object' && error && 'response' in error
+                ? (error as { response?: { data?: { error?: string } } }).response?.data?.error
+                : undefined
+            toast.error(message || 'Unable to resume — wallet balance may still be too low.')
+        } finally {
+            setResumingId('')
         }
     }
 
@@ -169,6 +189,11 @@ const AdzCampaignsClient = () => {
                                             <span className="rounded-full bg-[#eef7ec] px-3 py-1 text-xs font-semibold text-[#256b33]">
                                                 {campaign.format}
                                             </span>
+                                            {campaign.pausedReason === 'INSUFFICIENT_FUNDS' && (
+                                                <span className="flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
+                                                    <MdWarningAmber className="text-sm" /> Wallet balance too low
+                                                </span>
+                                            )}
                                         </div>
                                         <div>
                                             <h3 className="text-lg font-semibold text-slate-900">{campaign.campaignName}</h3>
@@ -217,7 +242,21 @@ const AdzCampaignsClient = () => {
                                         <MdEdit className="text-base" />
                                     </Link>
                                 </Button>
-                                {canSubmit(campaign) && (
+                                {campaign.pausedReason === 'INSUFFICIENT_FUNDS' ? (
+                                    <>
+                                        <Button asChild variant="outline" className="rounded-full">
+                                            <Link href={ROUTES.OWNER.WALLET}>Fund Wallet</Link>
+                                        </Button>
+                                        <Button
+                                            className="rounded-full"
+                                            onClick={() => handleResume(campaign._id)}
+                                            disabled={resumingId === campaign._id}
+                                        >
+                                            <MdPlayArrow className="text-base" />
+                                            {resumingId === campaign._id ? 'Resuming...' : 'Resume'}
+                                        </Button>
+                                    </>
+                                ) : canSubmit(campaign) && (
                                     <Button
                                         className="rounded-full"
                                         onClick={() => handleSubmit(campaign._id)}

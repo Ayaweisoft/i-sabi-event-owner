@@ -1,10 +1,12 @@
 "use client"
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { toast } from 'react-toastify'
 import useFetch from '@/hooks/useFetch'
+import useAuthStore from '@/hooks/useAuth'
 import NoResult from '@/components/NoResult'
 import StatCard from '@/components/StatCard'
-import { apiGetWalletSummary } from '@/services/AuthService'
+import { apiGetWalletSummary, apiInitiateWalletTopup, apiVerifyWalletTopup } from '@/services/AuthService'
 import { IWalletSummary } from '@/interfaces'
 import { formatNaira } from '@/lib/utils'
 import { ROUTES } from '@/constants/routes'
@@ -12,7 +14,7 @@ import {
     BarChart, Bar, XAxis, YAxis, Tooltip,
     ResponsiveContainer, CartesianGrid,
 } from 'recharts'
-import { MdArrowUpward, MdArrowDownward } from 'react-icons/md'
+import { MdArrowUpward, MdArrowDownward, MdAdd, MdClose } from 'react-icons/md'
 
 const txTypeColor: Record<string, string> = {
     credit:  'text-green-600',
@@ -20,13 +22,75 @@ const txTypeColor: Record<string, string> = {
     default: 'text-foreground',
 }
 
+const extractErrorMessage = (error: unknown, fallback: string) => {
+    const data = (error as { response?: { data?: { error?: string; message?: string } } })?.response?.data
+    if (typeof data?.error === 'string') return data.error
+    if (typeof data?.message === 'string') return data.message
+    return fallback
+}
+
 const WalletPage = () => {
-    const { data, isLoading } = useFetch<IWalletSummary>({
+    const token = useAuthStore((s) => s.token)
+    const { data, isLoading, error, refetch } = useFetch<IWalletSummary>({
         api: apiGetWalletSummary,
         key: ['WALLET_SUMMARY'],
     })
 
-    if (isLoading || !data) return <NoResult isLoading={isLoading} desc="Loading wallet…" />
+    const [fundOpen, setFundOpen] = useState(false)
+    const [amount, setAmount] = useState('')
+    const [submitting, setSubmitting] = useState(false)
+    const [verifying, setVerifying] = useState(false)
+
+    // Paystack redirects back here with ?reference= after checkout — verify
+    // once on load and clean the URL so a refresh doesn't re-trigger it
+    // (verify is idempotent server-side regardless, this is just tidy).
+    useEffect(() => {
+        if (!token) return
+        const params = new URLSearchParams(window.location.search)
+        const reference = params.get('reference') || params.get('trxref')
+        if (!reference) return
+
+        setVerifying(true)
+        apiVerifyWalletTopup(token, { reference })
+            .then((res) => {
+                const amt = res.data?.amount
+                toast.success(amt ? `Wallet funded with ${formatNaira(amt)}` : 'Wallet funded successfully')
+                refetch()
+            })
+            .catch((err) => toast.error(extractErrorMessage(err, 'Could not verify your top-up.')))
+            .finally(() => {
+                setVerifying(false)
+                window.history.replaceState({}, '', window.location.pathname)
+            })
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [token])
+
+    const handleFund = async () => {
+        if (!token) return
+        const value = Number(amount)
+        if (!Number.isFinite(value) || value < 100) {
+            toast.error('Enter an amount of at least ₦100.')
+            return
+        }
+        setSubmitting(true)
+        try {
+            const res = await apiInitiateWalletTopup(
+                { amount: value, callbackUrl: window.location.href.split('?')[0] },
+                { token },
+            )
+            const url = res.data?.authorization_url
+            if (!url) throw new Error('Payment gateway did not return a checkout link.')
+            window.location.href = url
+        } catch (err) {
+            toast.error(extractErrorMessage(err, 'Could not start the top-up. Please try again.'))
+            setSubmitting(false)
+        }
+    }
+
+    if (isLoading || verifying) return <NoResult isLoading desc={verifying ? 'Confirming your top-up…' : 'Loading wallet…'} />
+    if (error || !data) {
+        return <NoResult isLoading={false} desc="Could not load your wallet. Please try again." buttonText="Retry" onClick={() => refetch()} />
+    }
 
     const sourceTotal = data.revenueBySource.ticketing + data.revenueBySource.voting + data.revenueBySource.forms
     const sourceItems = [
@@ -44,6 +108,12 @@ const WalletPage = () => {
                 <span className="text-sm opacity-80 font-medium uppercase tracking-wide">Available Balance</span>
                 <span className="text-4xl font-bold">{formatNaira(data.balance)}</span>
                 <div className="flex gap-3 mt-1">
+                    <button
+                        onClick={() => setFundOpen(true)}
+                        className="flex items-center gap-1.5 bg-white/15 border border-white/30 text-white text-sm font-semibold px-5 py-2 rounded-lg"
+                    >
+                        <MdAdd /> Fund Wallet
+                    </button>
                     <Link
                         href={ROUTES.OWNER.WITHDRAW.INDEX}
                         className="bg-white text-primary text-sm font-semibold px-5 py-2 rounded-lg"
@@ -52,6 +122,40 @@ const WalletPage = () => {
                     </Link>
                 </div>
             </div>
+
+            {/* Fund wallet modal */}
+            {fundOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+                    <div className="bg-white rounded-2xl w-full max-w-sm p-5">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-sm font-bold">Fund Wallet</h3>
+                            <button onClick={() => setFundOpen(false)} className="text-muted-foreground">
+                                <MdClose />
+                            </button>
+                        </div>
+                        <label className="text-xs font-medium mb-1 block text-muted-foreground">Amount (₦)</label>
+                        <input
+                            type="number"
+                            min={100}
+                            value={amount}
+                            onChange={(e) => setAmount(e.target.value)}
+                            placeholder="e.g. 5000"
+                            className="w-full px-3 py-2 text-sm rounded-lg border outline-none mb-4"
+                            autoFocus
+                        />
+                        <p className="text-xs text-muted-foreground mb-4">
+                            You&apos;ll be redirected to Paystack to complete payment. Funds land in your wallet immediately after.
+                        </p>
+                        <button
+                            onClick={handleFund}
+                            disabled={submitting}
+                            className="w-full py-2.5 rounded-lg text-sm font-bold text-white bg-primary disabled:opacity-60"
+                        >
+                            {submitting ? 'Redirecting to payment…' : 'Continue to Payment'}
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Totals */}
             <div className="grid grid-cols-2 gap-3">
