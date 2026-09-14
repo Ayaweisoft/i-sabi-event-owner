@@ -265,6 +265,13 @@ const AdzCampaignForm = ({ campaignId }: { campaignId?: string }) => {
 
         if (currentStep === 2) {
             if (!form.placements.length) issues.push('Select at least one placement.')
+            // Unlike every other placement, the server treats an
+            // EVENT_DETAIL_SPONSOR campaign with no eventId as a house ad
+            // eligible on EVERY event's voting page, not just yours — almost
+            // never what someone buying their own event's sponsor slot wants.
+            if (form.placements.includes('EVENT_DETAIL_SPONSOR') && !form.eventId) {
+                issues.push('Link your event on the Goal step first — the sponsor strip placement only shows on that event\'s voting page.')
+            }
             if (form.targeting.minAge && form.targeting.maxAge && form.targeting.minAge > form.targeting.maxAge) {
                 issues.push('Minimum age cannot be greater than maximum age.')
             }
